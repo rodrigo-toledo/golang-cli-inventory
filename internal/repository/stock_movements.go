@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rodrigotoledo/cli-inventory/internal/db"
-	"github.com/rodrigotoledo/cli-inventory/internal/models"
+	"cli-inventory/internal/db"
+	"cli-inventory/internal/models"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type StockMovementRepository struct {
@@ -19,20 +21,21 @@ func NewStockMovementRepository(queries *db.Queries) *StockMovementRepository {
 }
 
 func (r *StockMovementRepository) Create(ctx context.Context, movement *models.StockMovement) (*models.StockMovement, error) {
-	params := db.CreateStockMovementParams{
-		ProductID:    int32(movement.ProductID),
-		Quantity:     int32(movement.Quantity),
-		MovementType: movement.MovementType,
-	}
-
 	// Handle nullable fields
+	var fromLocationID, toLocationID pgtype.Int4
 	if movement.FromLocationID != nil {
-		fromID := int32(*movement.FromLocationID)
-		params.FromLocationID = &fromID
+		fromLocationID = pgtype.Int4{Int32: int32(*movement.FromLocationID), Valid: true}
 	}
 	if movement.ToLocationID != nil {
-		toID := int32(*movement.ToLocationID)
-		params.ToLocationID = &toID
+		toLocationID = pgtype.Int4{Int32: int32(*movement.ToLocationID), Valid: true}
+	}
+
+	params := db.CreateStockMovementParams{
+		ProductID:      int32(movement.ProductID),
+		FromLocationID: fromLocationID,
+		ToLocationID:   toLocationID,
+		Quantity:       int32(movement.Quantity),
+		MovementType:   movement.MovementType,
 	}
 
 	dbMovement, err := r.queries.CreateStockMovement(ctx, params)
@@ -40,14 +43,25 @@ func (r *StockMovementRepository) Create(ctx context.Context, movement *models.S
 		return nil, fmt.Errorf("failed to create stock movement: %w", err)
 	}
 
+	// Convert pgtype.Int4 to *int
+	var fromLoc, toLoc *int
+	if dbMovement.FromLocationID.Valid {
+		val := int(dbMovement.FromLocationID.Int32)
+		fromLoc = &val
+	}
+	if dbMovement.ToLocationID.Valid {
+		val := int(dbMovement.ToLocationID.Int32)
+		toLoc = &val
+	}
+
 	return &models.StockMovement{
 		ID:             int(dbMovement.ID),
 		ProductID:      int(dbMovement.ProductID),
-		FromLocationID: (*int)(params.FromLocationID),
-		ToLocationID:   (*int)(params.ToLocationID),
+		FromLocationID: fromLoc,
+		ToLocationID:   toLoc,
 		Quantity:       int(dbMovement.Quantity),
 		MovementType:   dbMovement.MovementType,
-		CreatedAt:      dbMovement.CreatedAt,
+		CreatedAt:      dbMovement.CreatedAt.Time,
 	}, nil
 }
 
@@ -59,14 +73,25 @@ func (r *StockMovementRepository) List(ctx context.Context) ([]models.StockMovem
 
 	movements := make([]models.StockMovement, len(dbMovements))
 	for i, dbMovement := range dbMovements {
+		// Convert pgtype.Int4 to *int
+		var fromLoc, toLoc *int
+		if dbMovement.FromLocationID.Valid {
+			val := int(dbMovement.FromLocationID.Int32)
+			fromLoc = &val
+		}
+		if dbMovement.ToLocationID.Valid {
+			val := int(dbMovement.ToLocationID.Int32)
+			toLoc = &val
+		}
+
 		movements[i] = models.StockMovement{
 			ID:             int(dbMovement.ID),
 			ProductID:      int(dbMovement.ProductID),
-			FromLocationID: nil, // These might need to be handled differently
-			ToLocationID:   nil, // These might need to be handled differently
+			FromLocationID: fromLoc,
+			ToLocationID:   toLoc,
 			Quantity:       int(dbMovement.Quantity),
 			MovementType:   dbMovement.MovementType,
-			CreatedAt:      dbMovement.CreatedAt,
+			CreatedAt:      dbMovement.CreatedAt.Time,
 		}
 	}
 

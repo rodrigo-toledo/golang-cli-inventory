@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rodrigotoledo/cli-inventory/internal/models"
-	"github.com/rodrigotoledo/cli-inventory/internal/repository"
+	"cli-inventory/internal/models"
+	"cli-inventory/internal/repository"
 )
 
 type LocationService struct {
