@@ -1,3 +1,5 @@
+// Package main provides the command-line interface for the inventory management system.
+// It allows users to manage products, stock levels, and generate reports through various commands.
 package main
 
 import (
@@ -12,6 +14,9 @@ import (
 	"cli-inventory/internal/service"
 )
 
+// main initializes the application, sets up dependencies, and processes command-line arguments.
+// It creates database connections, initializes repositories and services, and routes commands
+// to appropriate handlers based on the provided arguments.
 func main() {
 	// Initialize database connection
 	database.InitDB()

@@ -1,3 +1,6 @@
+// Package repository provides data access implementations for the inventory management system.
+// It contains repositories that handle interactions with the database for products, locations,
+// stock, and stock movements.
 package repository
 
 import (
@@ -8,10 +11,13 @@ import (
 	"cli-inventory/internal/models"
 )
 
+// StockRepository provides methods for interacting with stock data in the database.
+// It handles operations related to stock levels and stock movements.
 type StockRepository struct {
 	queries *db.Queries
 }
 
+// NewStockRepository creates a new instance of StockRepository with the provided database queries.
 func NewStockRepository(queries *db.Queries) *StockRepository {
 	return &StockRepository{
 		queries: queries,

@@ -1,3 +1,6 @@
+// Package repository provides data access implementations for the inventory management system.
+// It contains repositories that handle interactions with the database for products, locations,
+// stock, and stock movements.
 package repository
 
 import (
@@ -10,10 +13,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+// ProductRepository provides methods for interacting with product data in the database.
+// It implements the ProductRepositoryInterface defined in the service package.
 type ProductRepository struct {
 	queries *db.Queries
 }
 
+// NewProductRepository creates a new instance of ProductRepository with the provided database queries.
 func NewProductRepository(queries *db.Queries) *ProductRepository {
 	return &ProductRepository{
 		queries: queries,

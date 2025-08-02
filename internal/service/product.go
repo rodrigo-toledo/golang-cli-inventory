@@ -1,3 +1,6 @@
+// Package service provides business logic implementations for the inventory management system.
+// It contains services that handle the core functionality such as product management,
+// stock management, and location management.
 package service
 
 import (
@@ -7,6 +10,8 @@ import (
 	"cli-inventory/internal/models"
 )
 
+// ProductRepositoryInterface defines the contract for product data access operations.
+// It specifies the methods that any product repository implementation must provide.
 type ProductRepositoryInterface interface {
 	Create(ctx context.Context, product *models.CreateProductRequest) (*models.Product, error)
 	GetBySKU(ctx context.Context, sku string) (*models.Product, error)
@@ -14,10 +19,14 @@ type ProductRepositoryInterface interface {
 	List(ctx context.Context) ([]models.Product, error)
 }
 
+// ProductService provides methods for managing products in the inventory system.
+// It handles operations such as creating products, retrieving product information,
+// and listing all products.
 type ProductService struct {
 	repo ProductRepositoryInterface
 }
 
+// NewProductService creates a new instance of ProductService with the provided product repository.
 func NewProductService(repo ProductRepositoryInterface) *ProductService {
 	return &ProductService{
 		repo: repo,
