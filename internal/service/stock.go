@@ -24,6 +24,7 @@ type StockRepositoryInterface interface {
 	AddStock(ctx context.Context, productID, locationID, quantity int) (*models.Stock, error)
 	RemoveStock(ctx context.Context, productID, locationID, quantity int) (*models.Stock, error)
 	GetLowStock(ctx context.Context, threshold int) ([]models.Stock, error)
+	GetByProductAndLocation(ctx context.Context, productID, locationID int) (*models.Stock, error)
 }
 
 // StockMovementRepositoryInterface defines the contract for stock movement data access operations.
@@ -95,6 +96,15 @@ func (s *StockService) AddStock(ctx context.Context, req *models.AddStockRequest
 }
 
 func (s *StockService) MoveStock(ctx context.Context, req *models.MoveStockRequest) (*models.Stock, error) {
+	// Validate input
+	if req.Quantity <= 0 {
+		return nil, fmt.Errorf("quantity must be positive")
+	}
+
+	if req.FromLocationID == req.ToLocationID {
+		return nil, fmt.Errorf("source and destination locations cannot be the same")
+	}
+
 	// Check if product exists
 	_, err := s.productRepo.GetByID(ctx, req.ProductID)
 	if err != nil {
@@ -111,6 +121,16 @@ func (s *StockService) MoveStock(ctx context.Context, req *models.MoveStockReque
 	_, err = s.locationRepo.GetByID(ctx, req.ToLocationID)
 	if err != nil {
 		return nil, fmt.Errorf("to location with ID %d does not exist", req.ToLocationID)
+	}
+
+	// Check if there's sufficient stock at the source location
+	currentStock, err := s.stockRepo.GetByProductAndLocation(ctx, req.ProductID, req.FromLocationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check current stock: %w", err)
+	}
+
+	if currentStock.Quantity < req.Quantity {
+		return nil, fmt.Errorf("insufficient stock: only %d available, requested %d", currentStock.Quantity, req.Quantity)
 	}
 
 	// If db is nil (e.g., in tests), perform operations without transaction
