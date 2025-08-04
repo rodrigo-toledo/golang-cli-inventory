@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	"cli-inventory/internal/auth"
 	"cli-inventory/internal/database"
 	"cli-inventory/internal/db"
 	"cli-inventory/internal/handlers"
@@ -89,6 +90,16 @@ var serveCmd = &cobra.Command{
 		locationRepo := repository.NewLocationRepository(queries)
 		locationService := service.NewLocationService(locationRepo)
 
+		// Initialize Auth Handler
+		authConfig, err := auth.LoadConfig()
+		if err != nil {
+			return fmt.Errorf("failed to load auth config: %w", err)
+		}
+		authHandler, err := auth.NewAuthHandler(authConfig)
+		if err != nil {
+			return fmt.Errorf("failed to initialize auth handler: %w", err)
+		}
+
 		// Initialize handlers
 		productHandler := handlers.NewProductHandler(productService)
 		locationHandler := handlers.NewLocationHandler(locationService)
@@ -103,8 +114,14 @@ var serveCmd = &cobra.Command{
 		r.Use(middleware.Logger)
 		r.Use(middleware.Recoverer)
 		r.Use(middleware.AllowContentType("application/json"))
+		r.Use(auth.Authenticator(authHandler.SessionSecret()))
 
-		// API Routes
+		// Auth Routes (no middleware)
+		r.Get("/login", authHandler.LoginHandler)
+		r.Get("/callback", authHandler.CallbackHandler)
+		r.Get("/logout", authHandler.LogoutHandler)
+
+		// API Routes (protected by AuthMiddleware)
 		r.Route("/api/v1", func(r chi.Router) {
 			// Product routes
 			r.Route("/products", func(r chi.Router) {

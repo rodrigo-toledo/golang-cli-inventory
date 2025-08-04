@@ -23,23 +23,23 @@ Here's a top-down view of the architecture:
 ```
 ┌─────────────────────────────────────┐
 │             CLI Layer               │
-│         (internal/cli/)            │
-│  • Handles user input & output     │
-│  • Command parsing (Cobra)         │
+│         (internal/cli/)             │
+│  • Handles user input & output      │
+│  • Command parsing (Cobra)          │
 └─────────────────┬───────────────────┘
                   │
 ┌─────────────────▼───────────────────┐
 │           Service Layer             │
 │        (internal/service/)          │
-│  • Business logic & rules          │
-│  • Orchestrates data flow          │
+│  • Business logic & rules           │
+│  • Orchestrates data flow           │
 └─────────────────┬───────────────────┘
                   │
 ┌─────────────────▼───────────────────┐
 │         Repository Layer            │
 │       (internal/repository/)        │
-│  • Data access logic               │
-│  • Interacts with generated DB code│
+│  • Data access logic                │
+│  • Interacts with generated DB code │
 └─────────────────┬───────────────────┘
                   │
 ┌─────────────────▼───────────────────┐
@@ -50,7 +50,7 @@ Here's a top-down view of the architecture:
 └─────────────────┬───────────────────┘
                   │
 ┌─────────────────▼───────────────────┐
-│          PostgreSQL DB               │
+│          PostgreSQL DB              │
 │    (Managed via Docker Compose)     │
 └─────────────────────────────────────┘
 ```

@@ -3,10 +3,14 @@ module cli-inventory
 go 1.24
 
 require (
+	github.com/coreos/go-oidc/v3 v3.15.0
+	github.com/go-chi/chi/v5 v5.2.2
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
+	golang.org/x/oauth2 v0.30.0
 )
 
 require (
@@ -21,7 +25,7 @@ require (
 	github.com/docker/docker v27.1.1+incompatible // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
-	github.com/go-chi/chi/v5 v5.2.2 // indirect
+	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/go-sql-driver/mysql v1.9.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
