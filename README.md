@@ -5,24 +5,26 @@ This is a command-line interface (CLI) application for managing inventory. It al
 ## Features
 
 - Add new products to the inventory
-- Add stock for existing products at specific locations
+- List all products in the inventory
 - Find products by SKU
+- Add stock for existing products at specific locations
 - Move stock between locations with atomic transactions
 - Generate low-stock reports
 
 ## Technical Stack
 
-- Language: Go
-- Database: PostgreSQL
+- Language: Go 1.24
+- Database: PostgreSQL 15
 - Docker and Docker Compose for containerization
 - SQLC for type-safe database queries
-- Go Playground Validator for input validation
+- Cobra CLI framework for command-line interface
+- Testify for testing utilities
 
 ## Getting Started
 
 ### Prerequisites
 
-- Go 1.21 or later
+- Go 1.24 or later
 - Docker and Docker Compose
 - PostgreSQL client (for direct database access if needed)
 - SQLC (for code generation from SQL queries)
@@ -55,10 +57,7 @@ This is a command-line interface (CLI) application for managing inventory. It al
    docker-compose up -d
    ```
 
-6. Run database migrations:
-   ```bash
-   migrate -path migrations -database "postgres://inventory_user:inventory_password@localhost:5432/inventory_db?sslmode=disable" up
-   ```
+   The database will be automatically initialized with migrations from the `migrations/` directory.
 
 ### Building the Application
 
@@ -91,15 +90,15 @@ Example:
 ./bin/inventory add-product PROD001 "Laptop" "High-performance laptop" 1299.99
 ```
 
-### Add Stock
+### List All Products
 
 ```bash
-./bin/inventory add-stock <product-id> <location-id> <quantity>
+./bin/inventory list-products
 ```
 
 Example:
 ```bash
-./bin/inventory add-stock 1 1 50
+./bin/inventory list-products
 ```
 
 ### Find a Product
@@ -111,6 +110,17 @@ Example:
 Example:
 ```bash
 ./bin/inventory find-product PROD001
+```
+
+### Add Stock
+
+```bash
+./bin/inventory add-stock <product-id> <location-id> <quantity>
+```
+
+Example:
+```bash
+./bin/inventory add-stock 1 1 50
 ```
 
 ### Move Stock
@@ -127,22 +137,71 @@ Example:
 ### Generate Report
 
 ```bash
-./bin/inventory generate-report low-stock [threshold]
+./bin/inventory generate-report <report-type> [options]
 ```
 
-Example:
+Low-stock report example:
 ```bash
 ./bin/inventory generate-report low-stock 20
 ```
+
+Available report types:
+- `low-stock [threshold]` - Show products with stock below specified threshold
 
 ## Database Schema
 
 The application uses a PostgreSQL database with the following tables:
 
-- `products`: Stores product definitions
-- `locations`: Stores location information
-- `stock`: Stores stock levels for each product at each location
-- `stock_movements`: Tracks all stock movements for audit purposes
+### `products`
+Stores product definitions:
+- `id` (SERIAL PRIMARY KEY)
+- `sku` (VARCHAR(50) UNIQUE NOT NULL)
+- `name` (VARCHAR(255) NOT NULL)
+- `description` (TEXT)
+- `price` (DECIMAL(10, 2))
+- `created_at` (TIMESTAMP WITH TIME ZONE DEFAULT NOW())
+
+### `locations`
+Stores location information:
+- `id` (SERIAL PRIMARY KEY)
+- `name` (VARCHAR(255) UNIQUE NOT NULL)
+- `created_at` (TIMESTAMP WITH TIME ZONE DEFAULT NOW())
+
+### `stock`
+Stores stock levels for each product at each location:
+- `id` (SERIAL PRIMARY KEY)
+- `product_id` (INTEGER REFERENCES products(id) ON DELETE CASCADE)
+- `location_id` (INTEGER REFERENCES locations(id) ON DELETE CASCADE)
+- `quantity` (INTEGER NOT NULL DEFAULT 0)
+- `created_at` (TIMESTAMP WITH TIME ZONE DEFAULT NOW())
+- `updated_at` (TIMESTAMP WITH TIME ZONE DEFAULT NOW())
+- UNIQUE constraint on (product_id, location_id)
+
+### `stock_movements`
+Tracks all stock movements for audit purposes:
+- `id` (SERIAL PRIMARY KEY)
+- `product_id` (INTEGER REFERENCES products(id) ON DELETE CASCADE)
+- `from_location_id` (INTEGER REFERENCES locations(id) ON DELETE SET NULL)
+- `to_location_id` (INTEGER REFERENCES locations(id) ON DELETE SET NULL)
+- `quantity` (INTEGER NOT NULL)
+- `movement_type` (VARCHAR(50) NOT NULL)
+- `created_at` (TIMESTAMP WITH TIME ZONE DEFAULT NOW())
+
+## Configuration
+
+### Database Connection
+
+The application uses the following environment variables for database configuration:
+
+- `DATABASE_URL`: PostgreSQL connection string
+  - Default: `postgres://inventory_user:inventory_password@db:5432/inventory_db?sslmode=disable`
+
+### Docker Configuration
+
+The `docker-compose.yml` file sets up:
+- PostgreSQL 15 database
+- Automatic migration execution on startup
+- Data persistence via Docker volumes
 
 ## Testing
 
@@ -167,7 +226,24 @@ make integration-test
 
 Or manually:
 ```bash
-docker-compose -f docker-compose.test.yml up --build
+docker-compose -f docker-compose.test.yml run --rm app go test ./...
+```
+
+### Test Coverage
+
+To run unit tests with coverage report:
+```bash
+make test-coverage
+```
+
+To run integration tests with coverage report:
+```bash
+make integration-test-coverage
+```
+
+To run all tests (unit + integration):
+```bash
+make test-all
 ```
 
 ## Project Structure
@@ -186,17 +262,65 @@ docker-compose -f docker-compose.test.yml up --build
 │   ├── 000001_create_tables.up.sql
 │   └── 000001_create_tables.down.sql
 ├── internal/
+│   ├── cli/                      # Command-line interface
+│   │   ├── root.go               # Root command and initialization
+│   │   ├── product_commands.go   # Product-related commands
+│   │   └── stock_commands.go     # Stock-related commands
+│   ├── config/                   # Configuration management
 │   ├── database/                 # Database connection and utilities
+│   │   └── database.go
 │   ├── db/                       # Generated SQLC code
+│   │   ├── db.go
+│   │   ├── models.go
+│   │   ├── querier.go
+│   │   ├── products.sql.go
+│   │   ├── stock.sql.go
+│   │   ├── locations.sql.go
+│   │   └── stock_movements.sql.go
 │   ├── models/                   # Data models
+│   │   ├── product.go
+│   │   ├── location.go
+│   │   └── stock.go
 │   ├── repository/               # Data access layer
-│   └── service/                  # Business logic layer
+│   │   ├── products.go
+│   │   ├── locations.go
+│   │   ├── stock.go
+│   │   └── stock_movements.go
+│   ├── service/                  # Business logic layer
+│   │   ├── product.go
+│   │   ├── location.go
+│   │   └── stock.go
+│   ├── testutils/                # Test utilities
+│   │   ├── test_data.go
+│   │   └── test_database.go
+│   └── validation/               # Input validation
 └── queries/                      # SQL queries
     ├── products.sql
     ├── stock.sql
     ├── locations.sql
     └── stock_movements.sql
 ```
+
+## Development Workflow
+
+1. **Make changes to SQL queries**: Edit files in the `queries/` directory
+2. **Generate Go code**: Run `sqlc generate` to update `internal/db/`
+3. **Update business logic**: Modify files in `internal/service/`
+4. **Update CLI commands**: Modify files in `internal/cli/`
+5. **Test changes**: Run `make test-all`
+6. **Build application**: Run `make build`
+
+## Cleaning Generated Files
+
+To clean all generated files and start fresh:
+```bash
+make clean
+```
+
+This will remove:
+- `internal/db/` directory (generated SQLC code)
+- `bin/` directory (compiled binaries)
+- Coverage files (`coverage.out`, `coverage.html`)
 
 ## License
 
