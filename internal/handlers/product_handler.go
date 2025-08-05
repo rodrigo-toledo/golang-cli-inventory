@@ -26,26 +26,30 @@ func NewProductHandler(productService service.ProductServiceInterface) *ProductH
 
 // CreateProduct handles POST /api/v1/products requests.
 func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 	var req models.CreateProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request payload"})
 		return
 	}
 
 	// TODO: Add more robust validation (e.g., using go-playground/validator)
 	if req.SKU == "" || req.Name == "" {
-		http.Error(w, "SKU and Name are required", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "SKU and Name are required"})
 		return
 	}
 
 	product, err := h.productService.CreateProduct(r.Context(), &req)
 	if err != nil {
 		// TODO: Handle specific errors (e.g., product already exists) with appropriate status codes
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	if err := json.NewEncoder(w).Encode(product); err != nil {
 		// Log error, but the response header is already sent
@@ -55,13 +59,15 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 
 // ListProducts handles GET /api/v1/products requests.
 func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 	products, err := h.productService.ListProducts(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(products); err != nil {
 		// Log error
@@ -71,20 +77,23 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 
 // GetProductBySKU handles GET /api/v1/products/{sku} requests.
 func (h *ProductHandler) GetProductBySKU(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 	sku := chi.URLParam(r, "sku")
 	if sku == "" {
-		http.Error(w, "SKU is required", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "SKU is required"})
 		return
 	}
 
 	product, err := h.productService.GetProductBySKU(r.Context(), sku)
 	if err != nil {
 		// TODO: Check for "not found" error and return 404
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(product); err != nil {
 		// Log error
