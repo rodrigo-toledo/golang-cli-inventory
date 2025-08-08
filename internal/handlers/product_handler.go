@@ -11,6 +11,7 @@ import (
 	"cli-inventory/internal/service"
 
 	"github.com/go-chi/chi/v5"
+	validator "github.com/go-playground/validator/v10"
 )
 
 // ProductHandler handles HTTP requests for product operations.
@@ -25,6 +26,8 @@ func NewProductHandler(productService service.ProductServiceInterface) *ProductH
 	}
 }
 
+var validate = validator.New()
+
 // CreateProduct handles POST /api/v1/products requests.
 func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -35,11 +38,9 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Add more robust validation (e.g., using go-playground/validator)
-	if req.SKU == "" || req.Name == "" {
-		// For now, we create a simple error to be handled by the generic handler.
-		// This can be improved with a specific validation error type.
-		HandleError(w, fmt.Errorf("%w: SKU and Name are required", ErrBadRequest))
+	// Validate request using go-playground/validator tags on the model.
+	if err := validate.Struct(req); err != nil {
+		HandleError(w, fmt.Errorf("%w: %v", ErrBadRequest, err.Error()))
 		return
 	}
 

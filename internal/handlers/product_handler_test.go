@@ -136,7 +136,9 @@ func TestProductHandler_CreateProduct(t *testing.T) {
 		handler.CreateProduct(w, r)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
-		assert.Contains(t, w.Body.String(), "SKU and Name are required")
+		resp := w.Body.String()
+		assert.Contains(t, resp, "SKU")
+		assert.Contains(t, resp, "Name")
 		mockService.AssertNotCalled(t, "CreateProduct")
 
 		// Even error responses should be OpenAPI compliant
