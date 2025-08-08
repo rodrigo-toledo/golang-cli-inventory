@@ -18,7 +18,14 @@ integration-test:
 
 # Run unit tests with coverage
 test-coverage:
-	go test -coverprofile=coverage.out ./...
+	go test -coverprofile=coverage.out -covermode=count ./...
+	go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//' > coverage_percentage.txt
+	@if [ $$(cat coverage_percentage.txt) -lt 90 ]; then \
+		echo "❌ Test coverage is below 90% (current: $$(cat coverage_percentage.txt)%)"; \
+		exit 1; \
+	else \
+		echo "✅ Test coverage is $$(cat coverage_percentage.txt)% (meets 90% threshold)"; \
+	fi
 	go tool cover -html=coverage.out -o coverage.html
 	open coverage.html
 
