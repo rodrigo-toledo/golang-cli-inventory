@@ -16,27 +16,6 @@ import (
 // ErrInsufficientStock is returned when an attempt is made to move more stock than is available.
 var ErrInsufficientStock = errors.New("insufficient stock")
 
-// LocationRepositoryInterface defines the contract for location data access operations.
-// It specifies the methods that any location repository implementation must provide.
-type LocationRepositoryInterface interface {
-	GetByID(ctx context.Context, id int) (*models.Location, error)
-}
-
-// StockRepositoryInterface defines the contract for stock data access operations.
-// It specifies the methods that any stock repository implementation must provide.
-type StockRepositoryInterface interface {
-	AddStock(ctx context.Context, productID, locationID, quantity int) (*models.Stock, error)
-	RemoveStock(ctx context.Context, productID, locationID, quantity int) (*models.Stock, error)
-	GetLowStock(ctx context.Context, threshold int) ([]models.Stock, error)
-	GetByProductAndLocation(ctx context.Context, productID, locationID int) (*models.Stock, error)
-}
-
-// StockMovementRepositoryInterface defines the contract for stock movement data access operations.
-// It specifies the methods that any stock movement repository implementation must provide.
-type StockMovementRepositoryInterface interface {
-	Create(ctx context.Context, movement *models.StockMovement) (*models.StockMovement, error)
-}
-
 // StockService provides methods for managing stock levels and movements in the inventory system.
 // It handles operations such as adding stock, moving stock between locations, and generating reports.
 type StockService struct {

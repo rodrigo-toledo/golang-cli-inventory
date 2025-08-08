@@ -13,11 +13,11 @@ import (
 
 // StockHandler handles HTTP requests for stock operations.
 type StockHandler struct {
-	stockService *service.StockService
+	stockService service.StockServiceInterface
 }
 
 // NewStockHandler creates a new instance of StockHandler.
-func NewStockHandler(stockService *service.StockService) *StockHandler {
+func NewStockHandler(stockService service.StockServiceInterface) *StockHandler {
 	return &StockHandler{
 		stockService: stockService,
 	}
