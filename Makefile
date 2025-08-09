@@ -30,17 +30,7 @@ test-coverage:
 
 # Measure and display current coverage
 coverage:
-	@echo "📊 Measuring test coverage..."
-	@go test -coverprofile=coverage.out -covermode=count ./... >/dev/null
-	@echo ""
-	@echo "📈 Coverage by package:"
-	@go tool cover -func=coverage.out | grep -v "total:" | awk '{print $1 ": " $3}' | sort
-	@echo ""
-	@echo "📈 Overall coverage:"
-	@go tool cover -func=coverage.out | grep "total:" | awk '{print $3}'
-	@echo ""
-	@echo "📄 HTML coverage report generated: coverage.html"
-	@go tool cover -html=coverage.out -o coverage.html
+	@scripts/coverage.sh
 
 # Run integration tests with coverage
 integration-test-coverage:
