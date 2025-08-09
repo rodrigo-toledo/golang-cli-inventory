@@ -1,3 +1,5 @@
 coverage.*
 coverage_*
 .DS_Store
+*.out
+bin/*
