@@ -3,3 +3,4 @@ coverage_*
 .DS_Store
 *.out
 bin/*
+.crush/
