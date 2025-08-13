@@ -1,7 +1,7 @@
 package openapi
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -179,7 +179,16 @@ func (v *Validator) sendErrorResponse(w http.ResponseWriter, statusCode int, mes
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(errorResponse)
+	
+	// Use JSON v2 Marshal function
+	data, marshalErr := json.Marshal(errorResponse)
+	if marshalErr != nil {
+		// Fallback to simple error message if marshaling fails
+		http.Error(w, "Failed to encode error response", http.StatusInternalServerError)
+		return
+	}
+	
+	w.Write(data)
 }
 
 // Enable enables OpenAPI validation

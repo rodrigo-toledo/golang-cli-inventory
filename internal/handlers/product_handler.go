@@ -3,7 +3,7 @@
 package handlers
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/http"
 
@@ -33,7 +33,7 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var req models.CreateProductRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		HandleError(w, err) // Will result in a 400 Bad Request
 		return
 	}
@@ -51,7 +51,7 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(product); err != nil {
+	if err := json.MarshalWrite(w, product); err != nil {
 		// Log error, but the response header is already sent
 		// log.Printf("Failed to encode response: %v", err)
 	}
@@ -68,7 +68,7 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(products); err != nil {
+	if err := json.MarshalWrite(w, products); err != nil {
 		// Log error
 		// log.Printf("Failed to encode response: %v", err)
 	}
@@ -91,7 +91,7 @@ func (h *ProductHandler) GetProductBySKU(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(product); err != nil {
+	if err := json.MarshalWrite(w, product); err != nil {
 		// Log error
 		// log.Printf("Failed to encode response: %v", err)
 	}

@@ -3,7 +3,7 @@
 package handlers
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"strconv"
 
@@ -26,7 +26,7 @@ func NewStockHandler(stockService service.StockServiceInterface) *StockHandler {
 // AddStock handles POST /api/v1/stock/add requests.
 func (h *StockHandler) AddStock(w http.ResponseWriter, r *http.Request) {
 	var req models.AddStockRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
@@ -46,7 +46,7 @@ func (h *StockHandler) AddStock(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK) // Or 201 Created if we consider this a new stock entry creation
-	if err := json.NewEncoder(w).Encode(stock); err != nil {
+	if err := json.MarshalWrite(w, stock); err != nil {
 		// Log error
 		// log.Printf("Failed to encode response: %v", err)
 	}
@@ -55,7 +55,7 @@ func (h *StockHandler) AddStock(w http.ResponseWriter, r *http.Request) {
 // MoveStock handles POST /api/v1/stock/move requests.
 func (h *StockHandler) MoveStock(w http.ResponseWriter, r *http.Request) {
 	var req models.MoveStockRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
@@ -80,7 +80,7 @@ func (h *StockHandler) MoveStock(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(stock); err != nil {
+	if err := json.MarshalWrite(w, stock); err != nil {
 		// Log error
 		// log.Printf("Failed to encode response: %v", err)
 	}
@@ -107,7 +107,7 @@ func (h *StockHandler) GetLowStockReport(w http.ResponseWriter, r *http.Request)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(stocks); err != nil {
+	if err := json.MarshalWrite(w, stocks); err != nil {
 		// Log error
 		// log.Printf("Failed to encode response: %v", err)
 	}

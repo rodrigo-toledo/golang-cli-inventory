@@ -11,9 +11,10 @@ import (
 	"cli-inventory/internal/models"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // MockDBTX is a mock implementation of the db.DBTX interface
