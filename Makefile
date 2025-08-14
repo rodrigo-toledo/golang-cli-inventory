@@ -14,7 +14,7 @@ test:
 
 # Run integration tests with JSON v2 experiment enabled
 integration-test:
-	GOEXPERIMENT=jsonv2 docker-compose -f docker-compose.test.yml run --rm app go test ./...
+	docker-compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from app
 
 # Run unit tests with coverage and JSON v2 experiment enabled
 test-coverage:
@@ -34,8 +34,7 @@ coverage:
 
 # Run integration tests with coverage and JSON v2 experiment enabled
 integration-test-coverage:
-	GOEXPERIMENT=jsonv2 docker-compose -f docker-compose.test.yml run --rm app go test -coverprofile=coverage.out ./...
-	GOEXPERIMENT=jsonv2 docker-compose -f docker-compose.test.yml run --rm app go tool cover -html=coverage.out -o coverage.html
+	docker-compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from app
 
 # Run all tests (unit + integration) with comprehensive output and JSON v2 experiment enabled
 test-all:
@@ -45,8 +44,10 @@ test-all:
 	@GOEXPERIMENT=jsonv2 go test -v ./...
 	@echo "✅ Unit tests completed"
 	@echo ""
-	@echo "⚠️  Skipping integration tests due to Docker image compatibility issues on Apple Silicon"
-	@echo "🎉 Unit tests completed successfully!"
+	@echo "🔧 Running integration tests..."
+	@docker-compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from app
+	@echo "✅ Integration tests completed"
+	@echo "🎉 All tests completed successfully!"
 
 # Clean generated files
 clean:
