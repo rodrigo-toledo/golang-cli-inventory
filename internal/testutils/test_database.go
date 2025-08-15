@@ -24,13 +24,30 @@ var (
 
 // SetupTestDatabase creates a test database using Docker and returns the connection pool
 // This function uses dockertest to manage the container lifecycle
+// If DATABASE_URL is set, it will use that connection instead of creating a new container
 func SetupTestDatabase(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 
 	once.Do(func() {
-		var err error
+		// Check if we're running in a Docker environment with an existing database
+		databaseURL := os.Getenv("DATABASE_URL")
+		if databaseURL != "" {
+			// Try to use the existing database connection
+			var err error
+			testDB, err = pgxpool.New(context.Background(), databaseURL)
+			if err != nil {
+				log.Fatalf("Could not connect to existing database: %s", err)
+			}
+			
+			// Run migrations
+			if err := runMigrations(testDB); err != nil {
+				log.Fatalf("Could not run migrations: %s", err)
+			}
+			return
+		}
 
 		// Create a pool of Docker clients
+		var err error
 		testPool, err = dockertest.NewPool("")
 		if err != nil {
 			log.Fatalf("Could not connect to Docker: %s", err)
@@ -69,7 +86,7 @@ func SetupTestDatabase(t *testing.T) *pgxpool.Pool {
 
 		// Get the database connection string
 		hostAndPort := testResource.GetHostPort("5432/tcp")
-		databaseURL := fmt.Sprintf("postgres://testuser:testpass@%s/testdb?sslmode=disable", hostAndPort)
+		databaseURL = fmt.Sprintf("postgres://testuser:testpass@%s/testdb?sslmode=disable", hostAndPort)
 
 		// Exponential backoff-retry, because the application in the container might not be ready to accept connections yet
 		if err := testPool.Retry(func() error {
@@ -112,13 +129,8 @@ func CleanupTestDatabase(t *testing.T, db *pgxpool.Pool) {
 
 	ctx := context.Background()
 
-	// Disable foreign key checks temporarily
-	_, err := db.Exec(ctx, "SET CONSTRAINTS ALL DEFERRED")
-	if err != nil {
-		t.Fatalf("Could not disable constraints: %s", err)
-	}
-
 	// Truncate all tables in the correct order to respect foreign key constraints
+	// Using RESTART IDENTITY CASCADE to reset sequences and handle foreign keys
 	tables := []string{
 		"stock_movements",
 		"stock",
@@ -127,31 +139,29 @@ func CleanupTestDatabase(t *testing.T, db *pgxpool.Pool) {
 	}
 
 	for _, table := range tables {
-		_, err := db.Exec(ctx, fmt.Sprintf("TRUNCATE TABLE %s CASCADE", table))
+		_, err := db.Exec(ctx, fmt.Sprintf("TRUNCATE TABLE %s RESTART IDENTITY CASCADE", table))
 		if err != nil {
 			t.Fatalf("Could not truncate table %s: %s", table, err)
-		}
-	}
-
-	// Reset sequences
-	sequences := []string{
-		"locations_id_seq",
-		"products_id_seq",
-		"stock_id_seq",
-		"stock_movements_id_seq",
-	}
-
-	for _, seq := range sequences {
-		_, err := db.Exec(ctx, fmt.Sprintf("ALTER SEQUENCE %s RESTART WITH 1", seq))
-		if err != nil {
-			t.Fatalf("Could not reset sequence %s: %s", seq, err)
 		}
 	}
 }
 
 // runMigrations creates the database schema for testing
+// If tables already exist, it will skip creating them
 func runMigrations(db *pgxpool.Pool) error {
 	ctx := context.Background()
+
+	// Check if tables already exist by querying the locations table
+	var exists bool
+	err := db.QueryRow(ctx, "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'locations')").Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("could not check if tables exist: %w", err)
+	}
+
+	// If tables already exist, skip migration
+	if exists {
+		return nil
+	}
 
 	// Create tables schema
 	schema := `
@@ -191,7 +201,7 @@ func runMigrations(db *pgxpool.Pool) error {
 	);
 	`
 
-	_, err := db.Exec(ctx, schema)
+	_, err = db.Exec(ctx, schema)
 	if err != nil {
 		return fmt.Errorf("could not create tables: %w", err)
 	}
