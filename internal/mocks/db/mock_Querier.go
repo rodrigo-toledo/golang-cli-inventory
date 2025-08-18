@@ -672,6 +672,74 @@ func (_c *MockQuerier_GetLocationByName_Call) RunAndReturn(run func(ctx context.
 	return _c
 }
 
+// GetLowStock provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) GetLowStock(ctx context.Context, quantity int32) ([]db.Stock, error) {
+	ret := _mock.Called(ctx, quantity)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLowStock")
+	}
+
+	var r0 []db.Stock
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int32) ([]db.Stock, error)); ok {
+		return returnFunc(ctx, quantity)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int32) []db.Stock); ok {
+		r0 = returnFunc(ctx, quantity)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]db.Stock)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int32) error); ok {
+		r1 = returnFunc(ctx, quantity)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_GetLowStock_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLowStock'
+type MockQuerier_GetLowStock_Call struct {
+	*mock.Call
+}
+
+// GetLowStock is a helper method to define mock.On call
+//   - ctx context.Context
+//   - quantity int32
+func (_e *MockQuerier_Expecter) GetLowStock(ctx interface{}, quantity interface{}) *MockQuerier_GetLowStock_Call {
+	return &MockQuerier_GetLowStock_Call{Call: _e.mock.On("GetLowStock", ctx, quantity)}
+}
+
+func (_c *MockQuerier_GetLowStock_Call) Run(run func(ctx context.Context, quantity int32)) *MockQuerier_GetLowStock_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int32
+		if args[1] != nil {
+			arg1 = args[1].(int32)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_GetLowStock_Call) Return(stocks []db.Stock, err error) *MockQuerier_GetLowStock_Call {
+	_c.Call.Return(stocks, err)
+	return _c
+}
+
+func (_c *MockQuerier_GetLowStock_Call) RunAndReturn(run func(ctx context.Context, quantity int32) ([]db.Stock, error)) *MockQuerier_GetLowStock_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetProductByID provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) GetProductByID(ctx context.Context, id int32) (db.Product, error) {
 	ret := _mock.Called(ctx, id)
