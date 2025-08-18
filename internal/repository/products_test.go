@@ -350,6 +350,7 @@ func TestProductRepository_GetBySKU(t *testing.T) {
 		mockProduct   db.Product
 		mockError     error
 		expectedError string
+		expectNil     bool
 	}{
 		{
 			name:       "successful retrieval",
@@ -369,8 +370,9 @@ func TestProductRepository_GetBySKU(t *testing.T) {
 			name:          "product not found",
 			productSKU:    "NONEXISTENT",
 			mockProduct:   db.Product{},
-			mockError:     errors.New("product not found"),
-			expectedError: "failed to get product by SKU: product not found",
+			mockError:     errors.New("no rows in result set"),
+			expectedError: "",
+			expectNil:     true,
 		},
 	}
 
@@ -409,6 +411,9 @@ func TestProductRepository_GetBySKU(t *testing.T) {
 				assert.Error(t, err)
 				assert.EqualError(t, err, tt.expectedError)
 				assert.Nil(t, result)
+			} else if tt.expectNil {
+				assert.NoError(t, err)
+				assert.Nil(t, result)
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, result)
@@ -441,6 +446,7 @@ func TestProductRepository_GetByID(t *testing.T) {
 		mockProduct   db.Product
 		mockError     error
 		expectedError string
+		expectNil     bool
 	}{
 		{
 			name:      "successful retrieval",
@@ -460,8 +466,9 @@ func TestProductRepository_GetByID(t *testing.T) {
 			name:          "product not found",
 			productID:     999,
 			mockProduct:   db.Product{},
-			mockError:     errors.New("product not found"),
-			expectedError: "failed to get product by ID: product not found",
+			mockError:     errors.New("no rows in result set"),
+			expectedError: "",
+			expectNil:     true,
 		},
 	}
 
@@ -499,6 +506,9 @@ func TestProductRepository_GetByID(t *testing.T) {
 			if tt.expectedError != "" {
 				assert.Error(t, err)
 				assert.EqualError(t, err, tt.expectedError)
+				assert.Nil(t, result)
+			} else if tt.expectNil {
+				assert.NoError(t, err)
 				assert.Nil(t, result)
 			} else {
 				assert.NoError(t, err)

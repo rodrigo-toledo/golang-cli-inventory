@@ -209,6 +209,7 @@ func TestStockRepository_GetByProductAndLocation(t *testing.T) {
 		mockStock     db.Stock
 		mockError     error
 		expectedError string
+		expectNil     bool
 	}{
 		{
 			name:       "successful retrieval",
@@ -226,12 +227,12 @@ func TestStockRepository_GetByProductAndLocation(t *testing.T) {
 			expectedError: "",
 		},
 		{
-			name:          "stock not found",
-			productID:     999,
-			locationID:    999,
-			mockStock:     db.Stock{},
-			mockError:     errors.New("stock not found"),
-			expectedError: "failed to get stock: stock not found",
+			name:        "stock not found",
+			productID:   999,
+			locationID:  999,
+			mockStock:   db.Stock{},
+			mockError:   errors.New("no rows in result set"),
+			expectNil:   true,
 		},
 	}
 
@@ -269,6 +270,9 @@ func TestStockRepository_GetByProductAndLocation(t *testing.T) {
 			if tt.expectedError != "" {
 				assert.Error(t, err)
 				assert.EqualError(t, err, tt.expectedError)
+				assert.Nil(t, result)
+			} else if tt.expectNil {
+				assert.NoError(t, err)
 				assert.Nil(t, result)
 			} else {
 				assert.NoError(t, err)

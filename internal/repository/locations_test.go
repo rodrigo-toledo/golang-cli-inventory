@@ -193,6 +193,7 @@ func TestLocationRepository_GetByName(t *testing.T) {
 		mockLocation  db.Location
 		mockError     error
 		expectedError string
+		expectNil     bool
 	}{
 		{
 			name:         "successful retrieval",
@@ -210,7 +211,8 @@ func TestLocationRepository_GetByName(t *testing.T) {
 			locationName:  "Non-existent Warehouse",
 			mockLocation:  db.Location{},
 			mockError:     errors.New("no rows in result set"),
-			expectedError: "failed to get location by name: no rows in result set",
+			expectedError: "",
+			expectNil:     true,
 		},
 	}
 
@@ -246,6 +248,9 @@ func TestLocationRepository_GetByName(t *testing.T) {
 				assert.Error(t, err)
 				assert.EqualError(t, err, tt.expectedError)
 				assert.Nil(t, result)
+			} else if tt.expectNil {
+				assert.NoError(t, err)
+				assert.Nil(t, result)
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, result)
@@ -267,6 +272,7 @@ func TestLocationRepository_GetByID(t *testing.T) {
 		locationID    int
 		mockLocation  db.Location
 		mockError     error
+		expectNil     bool
 		expectedError string
 	}{
 		{
@@ -285,7 +291,8 @@ func TestLocationRepository_GetByID(t *testing.T) {
 			locationID:    999,
 			mockLocation:  db.Location{},
 			mockError:     errors.New("no rows in result set"),
-			expectedError: "failed to get location by ID: no rows in result set",
+			expectNil:     true,
+			expectedError: "",
 		},
 	}
 
@@ -320,6 +327,9 @@ func TestLocationRepository_GetByID(t *testing.T) {
 			if tt.expectedError != "" {
 				assert.Error(t, err)
 				assert.EqualError(t, err, tt.expectedError)
+				assert.Nil(t, result)
+			} else if tt.expectNil {
+				assert.NoError(t, err)
 				assert.Nil(t, result)
 			} else {
 				assert.NoError(t, err)

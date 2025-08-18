@@ -6,6 +6,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"cli-inventory/internal/db"
 	"cli-inventory/internal/models"
@@ -28,12 +29,15 @@ func NewProductRepository(queries *db.Queries) *ProductRepository {
 
 func (r *ProductRepository) Create(ctx context.Context, product *models.CreateProductRequest) (*models.Product, error) {
 	// Convert string to pgtype.Text
-	description := pgtype.Text{}
-	description.Scan(product.Description)
+	description := pgtype.Text{String: product.Description, Valid: true}
 
-	// Convert float64 to pgtype.Numeric
+	// Handle price conversion
 	price := pgtype.Numeric{}
-	price.Scan(product.Price)
+	if product.Price >= 0 {
+		price.Valid = true
+		// Use the same approach as in the tests
+		price.Scan(strconv.FormatFloat(product.Price, 'f', -1, 64))
+	}
 
 	params := db.CreateProductParams{
 		Sku:         product.SKU,
@@ -53,6 +57,10 @@ func (r *ProductRepository) Create(ctx context.Context, product *models.CreatePr
 func (r *ProductRepository) GetBySKU(ctx context.Context, sku string) (*models.Product, error) {
 	dbProduct, err := r.queries.GetProductBySKU(ctx, sku)
 	if err != nil {
+		// If no product is found, return nil instead of an error
+		if err.Error() == "no rows in result set" {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("failed to get product by SKU: %w", err)
 	}
 
@@ -62,6 +70,10 @@ func (r *ProductRepository) GetBySKU(ctx context.Context, sku string) (*models.P
 func (r *ProductRepository) GetByID(ctx context.Context, id int) (*models.Product, error) {
 	dbProduct, err := r.queries.GetProductByID(ctx, int32(id))
 	if err != nil {
+		// If no product is found, return nil instead of an error
+		if err.Error() == "no rows in result set" {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("failed to get product by ID: %w", err)
 	}
 

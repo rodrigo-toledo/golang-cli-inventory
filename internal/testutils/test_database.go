@@ -28,24 +28,29 @@ var (
 func SetupTestDatabase(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 
-	once.Do(func() {
-		// Check if we're running in a Docker environment with an existing database
-		databaseURL := os.Getenv("DATABASE_URL")
-		if databaseURL != "" {
-			// Try to use the existing database connection
-			var err error
-			testDB, err = pgxpool.New(context.Background(), databaseURL)
-			if err != nil {
-				log.Fatalf("Could not connect to existing database: %s", err)
-			}
-			
-			// Run migrations
-			if err := runMigrations(testDB); err != nil {
-				log.Fatalf("Could not run migrations: %s", err)
-			}
-			return
+	// Check if we're running in a Docker environment with an existing database
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL != "" {
+		// Try to use the existing database connection
+		db, err := pgxpool.New(context.Background(), databaseURL)
+		if err != nil {
+			log.Fatalf("Could not connect to existing database: %s", err)
 		}
+		
+		// Run migrations
+		if err := runMigrations(db); err != nil {
+			log.Fatalf("Could not run migrations: %s", err)
+		}
+		
+		// Cleanup the database immediately after connecting
+		CleanupTestDatabase(t, db)
+		
+		return db
+	}
 
+	// For Docker testing, we need to ensure each test gets a clean database
+	// We'll use a singleton pattern but ensure the database is clean
+	once.Do(func() {
 		// Create a pool of Docker clients
 		var err error
 		testPool, err = dockertest.NewPool("")
@@ -109,12 +114,22 @@ func SetupTestDatabase(t *testing.T) *pgxpool.Pool {
 		}
 	})
 
+	// For integration tests with Docker, we need to cleanup the database for each test
+	if testDB != nil {
+		CleanupTestDatabase(t, testDB)
+	}
+
 	return testDB
 }
 
 // TeardownTestDatabase stops and removes the test database container
 func TeardownTestDatabase(t *testing.T) {
 	t.Helper()
+
+	// Only teardown if we're in standalone mode (DATABASE_URL not set)
+	if os.Getenv("DATABASE_URL") != "" {
+		return
+	}
 
 	if testResource != nil {
 		if err := testPool.Purge(testResource); err != nil {
@@ -130,7 +145,6 @@ func CleanupTestDatabase(t *testing.T, db *pgxpool.Pool) {
 	ctx := context.Background()
 
 	// Truncate all tables in the correct order to respect foreign key constraints
-	// Using RESTART IDENTITY CASCADE to reset sequences and handle foreign keys
 	tables := []string{
 		"stock_movements",
 		"stock",
@@ -151,59 +165,17 @@ func CleanupTestDatabase(t *testing.T, db *pgxpool.Pool) {
 func runMigrations(db *pgxpool.Pool) error {
 	ctx := context.Background()
 
-	// Check if tables already exist by querying the locations table
+	// Since the database is already initialized via docker-compose volumes,
+	// we don't need to create the tables here. Just verify they exist.
 	var exists bool
 	err := db.QueryRow(ctx, "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'locations')").Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("could not check if tables exist: %w", err)
 	}
 
-	// If tables already exist, skip migration
-	if exists {
-		return nil
-	}
-
-	// Create tables schema
-	schema := `
-	CREATE TABLE locations (
-		id SERIAL PRIMARY KEY,
-		name VARCHAR(255) UNIQUE NOT NULL,
-		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-	);
-
-	CREATE TABLE products (
-		id SERIAL PRIMARY KEY,
-		sku VARCHAR(50) UNIQUE NOT NULL,
-		name VARCHAR(255) NOT NULL,
-		description TEXT,
-		price DECIMAL(10, 2),
-		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-	);
-
-	CREATE TABLE stock (
-		id SERIAL PRIMARY KEY,
-		product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-		location_id INTEGER NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
-		quantity INTEGER NOT NULL DEFAULT 0,
-		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-		updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-		UNIQUE(product_id, location_id)
-	);
-
-	CREATE TABLE stock_movements (
-		id SERIAL PRIMARY KEY,
-		product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-		from_location_id INTEGER REFERENCES locations(id) ON DELETE SET NULL,
-		to_location_id INTEGER REFERENCES locations(id) ON DELETE SET NULL,
-		quantity INTEGER NOT NULL,
-		movement_type VARCHAR(50) NOT NULL,
-		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-	);
-	`
-
-	_, err = db.Exec(ctx, schema)
-	if err != nil {
-		return fmt.Errorf("could not create tables: %w", err)
+	// If tables don't exist, that's an error since they should be created by docker-compose
+	if !exists {
+		return fmt.Errorf("database tables not found - migration may have failed")
 	}
 
 	return nil
