@@ -2,11 +2,11 @@
 
 # Generate Go code from SQL queries
 generate:
-	sqlc generate
+	go tool sqlc generate
 
 # Generate mocks using mockery
 mocks:
-	go run github.com/vektra/mockery/v3 --config=.mockery.yml
+	go tool mockery --config=.mockery.yml
 
 # Build the application with JSON v2 experiment enabled
 build:
@@ -14,12 +14,12 @@ build:
 
 # Run unit tests with JSON v2 experiment enabled
 unit-test:
-	go run github.com/vektra/mockery/v3 --config=.mockery.yml
+	go tool mockery --config=.mockery.yml
 	GOEXPERIMENT=jsonv2 go test ./internal/... -tags=unit
 
 # Run unit tests with JSON v2 experiment enabled
 test:
-	go run github.com/vektra/mockery/v3 --config=.mockery.yml
+	go tool mockery --config=.mockery.yml
 	GOEXPERIMENT=jsonv2 go test ./internal/... -tags=unit
 
 # Run integration tests with JSON v2 experiment enabled
@@ -28,7 +28,7 @@ integration-test:
 
 # Run unit tests with coverage and JSON v2 experiment enabled
 unit-test-coverage:
-	go run github.com/vektra/mockery/v3 --config=.mockery.yml
+	go tool mockery --config=.mockery.yml
 	GOEXPERIMENT=jsonv2 go test -coverprofile=coverage.out -covermode=count ./internal/... -tags=unit
 	GOEXPERIMENT=jsonv2 go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//' > coverage_percentage.txt
 	@if [ $(cat coverage_percentage.txt) -lt 90 ]; then \
@@ -41,7 +41,7 @@ unit-test-coverage:
 
 # Run unit tests with coverage and JSON v2 experiment enabled
 test-coverage:
-	go run github.com/vektra/mockery/v3 --config=.mockery.yml
+	go tool mockery --config=.mockery.yml
 	GOEXPERIMENT=jsonv2 go test -coverprofile=coverage.out -covermode=count ./internal/... -tags=unit
 	GOEXPERIMENT=jsonv2 go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//' > coverage_percentage.txt
 	@if [ $(cat coverage_percentage.txt) -lt 90 ]; then \

@@ -7,6 +7,7 @@
 - Test single: `GOEXPERIMENT=jsonv2 go test ./internal/<package> -run ^TestName$`
 - Coverage: `make test-coverage`
 - Generate mocks: `make mocks`
+- Generate SQL code: `make generate`
 
 ## Code Style
 - **Imports**: Grouped (stdlib, project, third-party), sorted via `goimports`
