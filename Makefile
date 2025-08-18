@@ -6,7 +6,7 @@ generate:
 
 # Generate mocks using mockery
 mocks:
-	go run github.com/vektra/mockery/v3 --config=.mockery.yaml
+	go run github.com/vektra/mockery/v3 --config=.mockery.yml
 
 # Build the application with JSON v2 experiment enabled
 build:
