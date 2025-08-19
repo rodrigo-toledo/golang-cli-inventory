@@ -1,5 +1,10 @@
 # Progress
 
+Date: 2025-08-19
+
+Summary of completed work
+- Created README.md in memory-bank directory with explanation of purpose and maintainer checklist
+
 Date: 2025-08-09
 
 Summary of completed work
@@ -28,9 +33,6 @@ Open / pending tasks
 3. Keep memory bank up-to-date
    - Update `activeContext.md` after major changes (schema migrations, CI updates, new features).
    - Record progress in `progress.md` with short dated entries when milestones are reached.
-
-4. (Recommended) Add a README inside `memory-bank/`
-   - Brief explanation of the Memory Bank purpose and a short checklist for maintainers when updating.
 
 How to use
 - New sessions / contributors should read `projectbrief.md` first, then `productContext.md` and `techContext.md`.
