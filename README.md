@@ -14,7 +14,7 @@ This is a command-line interface (CLI) application for managing inventory. It al
 ## Technical Stack
 
 - Language: Go 1.25 (with experimental JSON v2 package)
-- Database: PostgreSQL 15
+- Database: PostgreSQL 17
 - Docker and Docker Compose for containerization
 - SQLC for type-safe database queries
 - Cobra CLI framework for command-line interface
@@ -389,7 +389,7 @@ The application uses the following environment variables for database configurat
 ### Docker Configuration
 
 The `docker-compose.yml` file sets up:
-- PostgreSQL 15 database
+- PostgreSQL 17 database
 - Automatic migration execution on startup
 - Data persistence via Docker volumes
 

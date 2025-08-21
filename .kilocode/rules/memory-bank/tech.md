@@ -3,7 +3,7 @@
 ## Core Technologies
 
 - **Language**: Go (version 1.25), with the `GOEXPERIMENT=jsonv2` flag enabled.
-- **Database**: PostgreSQL (version 15), managed via Docker.
+- **Database**: PostgreSQL (version 17), managed via Docker.
 - **CLI Framework**: `cobra` (`github.com/spf13/cobra`) for building the command-line interface.
 - **Database Driver**: `pgx/v5` (`github.com/jackc/pgx/v5`) for PostgreSQL interaction.
 
