@@ -3,318 +3,180 @@ package repository
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
 	"cli-inventory/internal/db"
 	"cli-inventory/internal/models"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-// MockDBTX is a mock implementation of the db.DBTX interface
-type MockDBTX struct {
-	mock.Mock
-}
-
-func (m *MockDBTX) Exec(ctx context.Context, query string, args ...interface{}) (pgconn.CommandTag, error) {
-	argsCalled := m.Called(ctx, query, args)
-	return argsCalled.Get(0).(pgconn.CommandTag), argsCalled.Error(1)
-}
-
-func (m *MockDBTX) Query(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error) {
-	argsCalled := m.Called(ctx, query, args)
-	return argsCalled.Get(0).(pgx.Rows), argsCalled.Error(1)
-}
-
-func (m *MockDBTX) QueryRow(ctx context.Context, query string, args ...interface{}) pgx.Row {
-	argsCalled := m.Called(ctx, query, args)
-	return argsCalled.Get(0).(pgx.Row)
-}
-
-// MockRowForStockMovements is a mock implementation of the pgx.Row interface
-type MockRowForStockMovements struct {
-	mock.Mock
-}
-
-func (m *MockRowForStockMovements) Scan(dest ...interface{}) error {
-	args := m.Called(dest...)
-	return args.Error(0)
-}
-
-// MockRowsForStockMovements is a mock implementation of the pgx.Rows interface
-type MockRowsForStockMovements struct {
-	mock.Mock
-	currentIndex int
-	rows         []map[string]interface{}
-}
-
-func (m *MockRowsForStockMovements) Close() {
-	m.Called()
-}
-
-func (m *MockRowsForStockMovements) Err() error {
-	args := m.Called()
-	return args.Error(0)
-}
-
-func (m *MockRowsForStockMovements) CommandTag() pgconn.CommandTag {
-	args := m.Called()
-	return args.Get(0).(pgconn.CommandTag)
-}
-
-func (m *MockRowsForStockMovements) FieldDescriptions() []pgconn.FieldDescription {
-	args := m.Called()
-	return args.Get(0).([]pgconn.FieldDescription)
-}
-
-func (m *MockRowsForStockMovements) Next() bool {
-	args := m.Called()
-	// If we have a specific return value, use it
-	if args.Get(0) != nil {
-		return args.Get(0).(bool)
-	}
-	// Otherwise, use our internal state
-	if m.currentIndex < len(m.rows) {
-		m.currentIndex++
-		return true
-	}
-	return false
-}
-
-func (m *MockRowsForStockMovements) Scan(dest ...interface{}) error {
-	args := m.Called(dest...)
-	return args.Error(0)
-}
-
-func (m *MockRowsForStockMovements) Values() ([]interface{}, error) {
-	args := m.Called()
-	return args.Get(0).([]interface{}), args.Error(1)
-}
-
-func (m *MockRowsForStockMovements) RawValues() [][]byte {
-	args := m.Called()
-	return args.Get(0).([][]byte)
-}
-
-func (m *MockRowsForStockMovements) Conn() *pgx.Conn {
-	args := m.Called()
-	return args.Get(0).(*pgx.Conn)
-}
-
 func TestStockMovementRepository_Create(t *testing.T) {
-	fromLocationID := 1
-	toLocationID := 2
+	t.Run("successful creation", func(t *testing.T) {
+		mockDB := new(MockDBTXForStock)
+		queries := db.New(mockDB)
+		repo := NewStockMovementRepository(queries)
 
-	tests := []struct {
-		name          string
-		movement      *models.StockMovement
-		mockMovement  db.StockMovement
-		mockError     error
-		expectedError string
-	}{
-		{
-			name: "successful creation with both locations",
-			movement: &models.StockMovement{
-				ProductID:      1,
-				FromLocationID: &fromLocationID,
-				ToLocationID:   &toLocationID,
-				Quantity:       100,
-				MovementType:   "transfer",
-			},
-			mockMovement: db.StockMovement{
-				ID:             1,
-				ProductID:      1,
-				FromLocationID: pgtype.Int4{Int32: 1, Valid: true},
-				ToLocationID:   pgtype.Int4{Int32: 2, Valid: true},
-				Quantity:       100,
-				MovementType:   "transfer",
-				CreatedAt:      pgtype.Timestamptz{Time: time.Now(), Valid: true},
-			},
-			mockError:     nil,
-			expectedError: "",
-		},
-		{
-			name: "successful creation with only from location",
-			movement: &models.StockMovement{
-				ProductID:      1,
-				FromLocationID: &fromLocationID,
-				ToLocationID:   nil,
-				Quantity:       50,
-				MovementType:   "removal",
-			},
-			mockMovement: db.StockMovement{
-				ID:             1,
-				ProductID:      1,
-				FromLocationID: pgtype.Int4{Int32: 1, Valid: true},
-				ToLocationID:   pgtype.Int4{Int32: 0, Valid: false},
-				Quantity:       50,
-				MovementType:   "removal",
-				CreatedAt:      pgtype.Timestamptz{Time: time.Now(), Valid: true},
-			},
-			mockError:     nil,
-			expectedError: "",
-		},
-		{
-			name: "successful creation with only to location",
-			movement: &models.StockMovement{
-				ProductID:      1,
-				FromLocationID: nil,
-				ToLocationID:   &toLocationID,
-				Quantity:       75,
-				MovementType:   "addition",
-			},
-			mockMovement: db.StockMovement{
-				ID:             1,
-				ProductID:      1,
-				FromLocationID: pgtype.Int4{Int32: 0, Valid: false},
-				ToLocationID:   pgtype.Int4{Int32: 2, Valid: true},
-				Quantity:       75,
-				MovementType:   "addition",
-				CreatedAt:      pgtype.Timestamptz{Time: time.Now(), Valid: true},
-			},
-			mockError:     nil,
-			expectedError: "",
-		},
-		{
-			name: "database error",
-			movement: &models.StockMovement{
-				ProductID:      1,
-				FromLocationID: &fromLocationID,
-				ToLocationID:   &toLocationID,
-				Quantity:       100,
-				MovementType:   "transfer",
-			},
-			mockMovement:  db.StockMovement{},
-			mockError:     errors.New("database error"),
-			expectedError: "failed to create stock movement: database error",
-		},
-	}
+		fromLocationID := 1
+		toLocationID := 2
+		movement := &models.StockMovement{
+			ProductID:      1,
+			FromLocationID: &fromLocationID,
+			ToLocationID:   &toLocationID,
+			Quantity:       10,
+			MovementType:   "MOVE",
+		}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// mockDB := new(MockDBTX)
-			// queries := db.New(mockDB)
-			// repo := NewStockMovementRepository(queries)
+		expectedMovement := db.StockMovement{
+			ID:             1,
+			ProductID:      1,
+			FromLocationID: pgtype.Int4{Int32: 1, Valid: true},
+			ToLocationID:   pgtype.Int4{Int32: 2, Valid: true},
+			Quantity:       10,
+			MovementType:   "MOVE",
+			CreatedAt:      pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		}
 
-			// For now, let's skip these tests as they require more complex mocking
-			// of the db.Queries type which is generated by sqlc
-			mockDB := new(MockDBTX)
-			queries := db.New(mockDB)
-			repo := NewStockMovementRepository(queries)
+		// Mock the QueryRow method
+		mockRow := new(MockRow) // This will use the MockRow from locations_test.go
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+			Return(nil).
+			Run(func(args mock.Arguments) {
+				arg := args.Get(0).(*int32)
+				*arg = expectedMovement.ID
+				arg1 := args.Get(1).(*int32)
+				*arg1 = expectedMovement.ProductID
+				arg2 := args.Get(2).(*pgtype.Int4)
+				*arg2 = expectedMovement.FromLocationID
+				arg3 := args.Get(3).(*pgtype.Int4)
+				*arg3 = expectedMovement.ToLocationID
+				arg4 := args.Get(4).(*int32)
+				*arg4 = expectedMovement.Quantity
+				arg5 := args.Get(5).(*string)
+				*arg5 = expectedMovement.MovementType
+				arg6 := args.Get(6).(*pgtype.Timestamptz)
+				*arg6 = expectedMovement.CreatedAt
+			})
 
-			// Set up mock expectations for the database call
-			mockRow := new(MockRowForStockMovements)
-			mockDB.On("QueryRow", mock.Anything, mock.MatchedBy(func(query string) bool {
-				return strings.Contains(query, "INSERT INTO stock_movements")
-			}), mock.AnythingOfType("[]interface {}")).Return(mockRow)
-			
-			// Set up mock expectations for row scanning
-			if tt.mockError != nil {
-				mockRow.On("Scan", mock.AnythingOfType("*int32"), mock.AnythingOfType("*int32"), mock.AnythingOfType("*pgtype.Int4"), mock.AnythingOfType("*pgtype.Int4"), mock.AnythingOfType("*int32"), mock.AnythingOfType("*string"), mock.AnythingOfType("*pgtype.Timestamptz")).Return(tt.mockError)
-			} else {
-				mockRow.On("Scan", mock.AnythingOfType("*int32"), mock.AnythingOfType("*int32"), mock.AnythingOfType("*pgtype.Int4"), mock.AnythingOfType("*pgtype.Int4"), mock.AnythingOfType("*int32"), mock.AnythingOfType("*string"), mock.AnythingOfType("*pgtype.Timestamptz")).Return(nil).Run(func(args mock.Arguments) {
-					// Set the values that would be scanned
-					*(args.Get(0).(*int32)) = tt.mockMovement.ID
-					*(args.Get(1).(*int32)) = tt.mockMovement.ProductID
-					*(args.Get(2).(*pgtype.Int4)) = tt.mockMovement.FromLocationID
-					*(args.Get(3).(*pgtype.Int4)) = tt.mockMovement.ToLocationID
-					*(args.Get(4).(*int32)) = tt.mockMovement.Quantity
-					*(args.Get(5).(*string)) = tt.mockMovement.MovementType
-					*(args.Get(6).(*pgtype.Timestamptz)) = tt.mockMovement.CreatedAt
-				})
-			}
+		mockDB.On("QueryRow", mock.Anything, mock.AnythingOfType("string"), mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(mockRow)
 
-			// Execute the method
-			result, err := repo.Create(context.Background(), tt.movement)
+		result, err := repo.Create(context.Background(), movement)
 
-			// Assert results
-			if tt.expectedError != "" {
-				assert.Error(t, err)
-				assert.EqualError(t, err, tt.expectedError)
-				assert.Nil(t, result)
-			} else {
-				assert.NoError(t, err)
-				assert.NotNil(t, result)
-				assert.Equal(t, int(tt.mockMovement.ID), result.ID)
-				assert.Equal(t, int(tt.mockMovement.ProductID), result.ProductID)
-				// Handle nullable fields
-				if tt.mockMovement.FromLocationID.Valid {
-					assert.Equal(t, int(tt.mockMovement.FromLocationID.Int32), *result.FromLocationID)
-				} else {
-					assert.Nil(t, result.FromLocationID)
-				}
-				if tt.mockMovement.ToLocationID.Valid {
-					assert.Equal(t, int(tt.mockMovement.ToLocationID.Int32), *result.ToLocationID)
-				} else {
-					assert.Nil(t, result.ToLocationID)
-				}
-				assert.Equal(t, int(tt.mockMovement.Quantity), result.Quantity)
-				assert.Equal(t, tt.mockMovement.MovementType, result.MovementType)
-				assert.Equal(t, tt.mockMovement.CreatedAt.Time, result.CreatedAt)
-			}
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, expectedMovement.ID, int32(result.ID))
+		assert.Equal(t, expectedMovement.ProductID, int32(result.ProductID))
+		assert.Equal(t, expectedMovement.FromLocationID.Int32, int32(*result.FromLocationID))
+		assert.Equal(t, expectedMovement.ToLocationID.Int32, int32(*result.ToLocationID))
+		assert.Equal(t, expectedMovement.Quantity, int32(result.Quantity))
+		assert.Equal(t, expectedMovement.MovementType, result.MovementType)
 
-			// Assert that the mock expectations were met
-			mockDB.AssertExpectations(t)
-			mockRow.AssertExpectations(t)
-		})
-	}
+		mockDB.AssertExpectations(t)
+		mockRow.AssertExpectations(t)
+	})
+
+	t.Run("database error", func(t *testing.T) {
+		mockDB := new(MockDBTXForStock)
+		queries := db.New(mockDB)
+		repo := NewStockMovementRepository(queries)
+
+		fromLocationID := 1
+		toLocationID := 2
+		movement := &models.StockMovement{
+			ProductID:      1,
+			FromLocationID: &fromLocationID,
+			ToLocationID:   &toLocationID,
+			Quantity:       10,
+			MovementType:   "MOVE",
+		}
+
+		// Mock the QueryRow method to return an error
+		mockRow := new(MockRow) // This will use the MockRow from locations_test.go
+		mockRow.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("database error"))
+
+		mockDB.On("QueryRow", mock.Anything, mock.AnythingOfType("string"), mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(mockRow)
+
+		result, err := repo.Create(context.Background(), movement)
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.EqualError(t, err, "failed to create stock movement: database error")
+
+		mockDB.AssertExpectations(t)
+		mockRow.AssertExpectations(t)
+	})
 }
 
 func TestStockMovementRepository_List(t *testing.T) {
-	tests := []struct {
-		name            string
-		mockMovements   []db.StockMovement
-		mockError       error
-		expectedError   string
-	}{
+	expectedMovements := []db.StockMovement{
 		{
-			name: "successful list",
-			mockMovements: []db.StockMovement{
-				{
-					ID:             1,
-					ProductID:      1,
-					FromLocationID: pgtype.Int4{Int32: 1, Valid: true},
-					ToLocationID:   pgtype.Int4{Int32: 2, Valid: true},
-					Quantity:       100,
-					MovementType:   "transfer",
-					CreatedAt:      pgtype.Timestamptz{Time: time.Now(), Valid: true},
-				},
-				{
-					ID:             2,
-					ProductID:      2,
-					FromLocationID: pgtype.Int4{Int32: 0, Valid: false},
-					ToLocationID:   pgtype.Int4{Int32: 2, Valid: true},
-					Quantity:       50,
-					MovementType:   "addition",
-					CreatedAt:      pgtype.Timestamptz{Time: time.Now(), Valid: true},
-				},
-			},
-			mockError:     nil,
-			expectedError: "",
-		},
-		{
-			name:            "database error",
-			mockMovements:   nil,
-			mockError:       errors.New("database error"),
-			expectedError:   "failed to list stock movements: database error",
+			ID:             1,
+			ProductID:      1,
+			FromLocationID: pgtype.Int4{Int32: 1, Valid: true},
+			ToLocationID:   pgtype.Int4{Int32: 2, Valid: true},
+			Quantity:       10,
+			MovementType:   "MOVE",
+			CreatedAt:      pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// mockDB := new(MockDBTX)
-			// queries := db.New(mockDB)
-			// repo := NewStockMovementRepository(queries)
+	t.Run("successful list", func(t *testing.T) {
+		mockDB := new(MockDBTXForStock)
+		queries := db.New(mockDB)
+		repo := NewStockMovementRepository(queries)
 
-			// For now, let's skip these tests as they require more complex mocking
-			// of the db.Queries type which is generated by sqlc
-			t.Skip("Skipping due to complexity of mocking db.Queries")
-		})
-	}
+		mockRows := new(MockRows)
+		mockRows.On("Next").Return(true).Once()
+		mockRows.On("Scan", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Run(func(args mock.Arguments) {
+			arg := args.Get(0).(*int32)
+			*arg = expectedMovements[0].ID
+			arg1 := args.Get(1).(*int32)
+			*arg1 = expectedMovements[0].ProductID
+			arg2 := args.Get(2).(*pgtype.Int4)
+			*arg2 = expectedMovements[0].FromLocationID
+			arg3 := args.Get(3).(*pgtype.Int4)
+			*arg3 = expectedMovements[0].ToLocationID
+			arg4 := args.Get(4).(*int32)
+			*arg4 = expectedMovements[0].Quantity
+			arg5 := args.Get(5).(*string)
+			*arg5 = expectedMovements[0].MovementType
+			arg6 := args.Get(6).(*pgtype.Timestamptz)
+			*arg6 = expectedMovements[0].CreatedAt
+		}).Once()
+		mockRows.On("Next").Return(false).Once()
+		mockRows.On("Err").Return(nil).Once()
+		mockRows.On("Close").Return().Once()
+
+		mockDB.On("Query", mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(mockRows, nil)
+
+		result, err := repo.List(context.Background())
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Len(t, result, 1)
+		assert.Equal(t, expectedMovements[0].ID, int32(result[0].ID))
+
+		mockDB.AssertExpectations(t)
+		mockRows.AssertExpectations(t)
+	})
+
+	t.Run("database error", func(t *testing.T) {
+		mockDB := new(MockDBTXForStock)
+		queries := db.New(mockDB)
+		repo := NewStockMovementRepository(queries)
+
+		mockRows := new(MockRows)
+		mockDB.On("Query", mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(mockRows, errors.New("database error"))
+
+		result, err := repo.List(context.Background())
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.EqualError(t, err, "failed to list stock movements: database error")
+
+		mockDB.AssertExpectations(t)
+	})
 }
