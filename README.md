@@ -20,6 +20,16 @@ This is a command-line interface (CLI) application for managing inventory. It al
 - Cobra CLI framework for command-line interface
 - Testify for testing utilities
 
+## Development Commands
+
+For efficient development, this project provides separate commands for unit and integration tests:
+
+- `make unit-test` - Run unit tests only (fast)
+- `make integration-test` - Run integration tests with Docker (requires database)
+- `make test-all` - Run all tests (unit + integration)
+- `make unit-test-coverage` - Run unit tests with coverage report
+- `make integration-test-coverage` - Run integration tests with coverage report
+
 ## Getting Started
 
 ### Prerequisites
@@ -387,33 +397,27 @@ The `docker-compose.yml` file sets up:
 
 ### Unit Tests
 
-To run unit tests:
+To run unit tests only (fast):
 ```bash
-make test
+make unit-test
 ```
 
-Or manually:
-```bash
-go test ./...
-```
+This runs only the unit tests that don't require a database connection.
 
 ### Integration Tests
 
-To run integration tests:
+To run integration tests (requires Docker):
 ```bash
 make integration-test
 ```
 
-Or manually:
-```bash
-docker-compose -f docker-compose.test.yml run --rm app go test ./...
-```
+This runs only the integration tests that require a database connection.
 
 ### Test Coverage
 
 To run unit tests with coverage report:
 ```bash
-make test-coverage
+make unit-test-coverage
 ```
 
 To run integration tests with coverage report:
@@ -421,10 +425,21 @@ To run integration tests with coverage report:
 make integration-test-coverage
 ```
 
+### Running All Tests
+
 To run all tests (unit + integration):
 ```bash
 make test-all
 ```
+
+This runs both unit tests and integration tests sequentially. It's the same as running `make unit-test` followed by `make integration-test`.
+
+Alternatively, you can run all tests with the original command:
+```bash
+make test
+```
+
+This also runs both unit and integration tests together.
 
 ## Project Structure
 

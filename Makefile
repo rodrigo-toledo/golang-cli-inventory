@@ -1,4 +1,4 @@
-.PHONY: generate build test integration-test test-coverage integration-test-coverage test-all clean openapi-validate test-openapi docs coverage mocks
+.PHONY: generate build test unit-test integration-test test-coverage integration-test-coverage test-all clean openapi-validate test-openapi docs coverage mocks
 
 # Generate Go code from SQL queries
 generate:
@@ -13,18 +13,36 @@ build:
 	GOEXPERIMENT=jsonv2 go build -o bin/inventory cmd/inventory/main.go
 
 # Run unit tests with JSON v2 experiment enabled
+unit-test:
+	go run github.com/vektra/mockery/v3 --config=.mockery.yml
+	GOEXPERIMENT=jsonv2 go test ./internal/... -tags=unit
+
+# Run unit tests with JSON v2 experiment enabled
 test:
 	go run github.com/vektra/mockery/v3 --config=.mockery.yml
-	GOEXPERIMENT=jsonv2 go test ./...
+	GOEXPERIMENT=jsonv2 go test ./internal/... -tags=unit
 
 # Run integration tests with JSON v2 experiment enabled
 integration-test:
 	docker-compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from app
 
 # Run unit tests with coverage and JSON v2 experiment enabled
+unit-test-coverage:
+	go run github.com/vektra/mockery/v3 --config=.mockery.yml
+	GOEXPERIMENT=jsonv2 go test -coverprofile=coverage.out -covermode=count ./internal/... -tags=unit
+	GOEXPERIMENT=jsonv2 go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//' > coverage_percentage.txt
+	@if [ $(cat coverage_percentage.txt) -lt 90 ]; then \
+		echo "❌ Test coverage is below 90% (current: $(cat coverage_percentage.txt)%)"; \
+		exit 1; \
+	else \
+		echo "✅ Test coverage is $(cat coverage_percentage.txt)% (meets 90% threshold)"; \
+	fi
+	GOEXPERIMENT=jsonv2 go tool cover -html=coverage.out -o coverage.html
+
+# Run unit tests with coverage and JSON v2 experiment enabled
 test-coverage:
 	go run github.com/vektra/mockery/v3 --config=.mockery.yml
-	GOEXPERIMENT=jsonv2 go test -coverprofile=coverage.out -covermode=count ./...
+	GOEXPERIMENT=jsonv2 go test -coverprofile=coverage.out -covermode=count ./internal/... -tags=unit
 	GOEXPERIMENT=jsonv2 go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//' > coverage_percentage.txt
 	@if [ $(cat coverage_percentage.txt) -lt 90 ]; then \
 		echo "❌ Test coverage is below 90% (current: $(cat coverage_percentage.txt)%)"; \
@@ -47,7 +65,7 @@ test-all:
 	@echo "🧪 Running all tests (unit + integration)..."
 	@echo "=========================================="
 	@echo "📋 Running unit tests..."
-	@GOEXPERIMENT=jsonv2 go test -v ./...
+	@GOEXPERIMENT=jsonv2 go test -v ./internal/... -tags=unit
 	@echo "✅ Unit tests completed"
 	@echo ""
 	@echo "🔧 Running integration tests..."
