@@ -1,4 +1,4 @@
-.PHONY: generate build test integration-test test-coverage integration-test-coverage test-all clean
+.PHONY: generate build test integration-test test-coverage integration-test-coverage test-all clean openapi-validate test-openapi docs
 
 # Generate Go code from SQL queries
 generate:
@@ -46,3 +46,24 @@ clean:
 	rm -rf internal/db
 	rm -rf bin
 	rm -rf coverage.out coverage.html
+
+# Validate OpenAPI specification
+openapi-validate:
+	@echo "📋 Validating OpenAPI specification..."
+	@go run scripts/validate_openapi.go
+	@echo "✅ OpenAPI specification validation completed"
+
+# Run OpenAPI compliance tests
+test-openapi:
+	@echo "🧪 Running OpenAPI compliance tests..."
+	@go test -v ./internal/handlers
+	@echo "✅ OpenAPI compliance tests completed"
+
+# Generate API documentation
+docs:
+	@echo "📚 Generating API documentation..."
+	@echo "📖 OpenAPI specification available at: api/openapi.yaml"
+	@echo "🌐 You can view the API documentation using Swagger UI or Redoc"
+	@echo "   - Online Swagger UI: https://editor.swagger.io/"
+	@echo "   - Online Redoc: https://redocly.github.io/redoc/"
+	@echo "   - Upload api/openapi.yaml to either platform to view interactive documentation"

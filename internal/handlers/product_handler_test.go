@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"cli-inventory/internal/models"
 	"cli-inventory/internal/service"
+	"cli-inventory/internal/testutils"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
@@ -54,6 +56,9 @@ func TestProductHandler_CreateProduct(t *testing.T) {
 	mockService := new(MockProductService)
 	handler := NewProductHandler(mockService)
 
+	// Initialize OpenAPI test helper
+	openapiHelper := testutils.NewOpenAPITestHelper(t, "../../api/openapi.yaml")
+
 	t.Run("Success", func(t *testing.T) {
 		reqBody := models.CreateProductRequest{
 			SKU:         "TEST-SKU-123",
@@ -67,23 +72,42 @@ func TestProductHandler_CreateProduct(t *testing.T) {
 			Name:        reqBody.Name,
 			Description: reqBody.Description,
 			Price:       reqBody.Price,
+			CreatedAt:   time.Now(), // Set the CreatedAt field
 		}
 
 		mockService.On("CreateProduct", mock.Anything, mock.MatchedBy(func(req *models.CreateProductRequest) bool {
 			return req != nil && req.SKU == reqBody.SKU && req.Name == reqBody.Name
 		})).Return(expectedProduct, nil)
 
-		jsonReq, _ := json.Marshal(reqBody)
-		r, _ := http.NewRequest("POST", "/api/v1/products", bytes.NewBuffer(jsonReq))
+		// Create and validate request using OpenAPI helper
+		r := openapiHelper.CreateTestRequest("POST", "/api/v1/products", reqBody)
 		w := httptest.NewRecorder()
 
 		handler.CreateProduct(w, r)
 
 		assert.Equal(t, http.StatusCreated, w.Code)
+
+		// Debug: print response body
+		responseBody := w.Body.String()
+		t.Logf("Response body: %s", responseBody)
+		t.Logf("Response code: %d", w.Code)
+		t.Logf("Response headers: %v", w.Header())
+
 		var respProduct models.Product
-		err := json.NewDecoder(w.Body).Decode(&respProduct)
+		err := json.Unmarshal([]byte(responseBody), &respProduct)
 		assert.NoError(t, err)
-		assert.Equal(t, expectedProduct, &respProduct)
+		// Compare time fields separately since time.Time has internal fields that may differ
+		assert.Equal(t, expectedProduct.ID, respProduct.ID)
+		assert.Equal(t, expectedProduct.SKU, respProduct.SKU)
+		assert.Equal(t, expectedProduct.Name, respProduct.Name)
+		assert.Equal(t, expectedProduct.Description, respProduct.Description)
+		assert.Equal(t, expectedProduct.Price, respProduct.Price)
+		assert.WithinDuration(t, expectedProduct.CreatedAt, respProduct.CreatedAt, time.Second)
+
+		// Assert OpenAPI compliance
+		openapiHelper.AssertOpenAPICompliance("POST", "/api/v1/products", w)
+		openapiHelper.RequireOpenAPIFields("POST", "/api/v1/products", "201", w)
+
 		mockService.AssertExpectations(t)
 	})
 
@@ -95,6 +119,9 @@ func TestProductHandler_CreateProduct(t *testing.T) {
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		mockService.AssertNotCalled(t, "CreateProduct")
+
+		// Even error responses should be OpenAPI compliant
+		openapiHelper.AssertOpenAPICompliance("POST", "/api/v1/products", w)
 	})
 
 	t.Run("Missing Required Fields", func(t *testing.T) {
@@ -111,6 +138,9 @@ func TestProductHandler_CreateProduct(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), "SKU and Name are required")
 		mockService.AssertNotCalled(t, "CreateProduct")
+
+		// Even error responses should be OpenAPI compliant
+		openapiHelper.AssertOpenAPICompliance("POST", "/api/v1/products", w)
 	})
 
 	t.Run("Service Error", func(t *testing.T) {
@@ -124,39 +154,61 @@ func TestProductHandler_CreateProduct(t *testing.T) {
 			return req != nil && req.SKU == reqBody.SKU
 		})).Return((*models.Product)(nil), assert.AnError)
 
-		jsonReq, _ := json.Marshal(reqBody)
-		r, _ := http.NewRequest("POST", "/api/v1/products", bytes.NewBuffer(jsonReq))
+		// Create and validate request using OpenAPI helper
+		r := openapiHelper.CreateTestRequest("POST", "/api/v1/products", reqBody)
 		w := httptest.NewRecorder()
 
 		handler.CreateProduct(w, r)
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		mockService.AssertExpectations(t)
+
+		// Even error responses should be OpenAPI compliant
+		openapiHelper.AssertOpenAPICompliance("POST", "/api/v1/products", w)
 	})
 }
 
 func TestProductHandler_ListProducts(t *testing.T) {
+	// Initialize OpenAPI test helper
+	openapiHelper := testutils.NewOpenAPITestHelper(t, "../../api/openapi.yaml")
 
 	t.Run("Success", func(t *testing.T) {
 		mockService := new(MockProductService)
 		handler := NewProductHandler(mockService)
 
 		expectedProducts := []models.Product{
-			{ID: 1, SKU: "SKU1", Name: "Product 1", Price: 10.0},
-			{ID: 2, SKU: "SKU2", Name: "Product 2", Price: 20.0},
+			{ID: 1, SKU: "SKU1", Name: "Product 1", Price: 10.0, CreatedAt: time.Now()},
+			{ID: 2, SKU: "SKU2", Name: "Product 2", Price: 20.0, CreatedAt: time.Now()},
 		}
 		mockService.On("ListProducts", mock.Anything).Return(expectedProducts, nil)
 
-		r, _ := http.NewRequest("GET", "/api/v1/products", nil)
+		// Create and validate request using OpenAPI helper
+		r := openapiHelper.CreateTestRequest("GET", "/api/v1/products", nil)
 		w := httptest.NewRecorder()
 
 		handler.ListProducts(w, r)
 
 		assert.Equal(t, http.StatusOK, w.Code)
+
+		// Store response body to avoid consumption issues
+		responseBody := w.Body.String()
 		var respProducts []models.Product
-		err := json.NewDecoder(w.Body).Decode(&respProducts)
+		err := json.Unmarshal([]byte(responseBody), &respProducts)
 		assert.NoError(t, err)
-		assert.Equal(t, expectedProducts, respProducts)
+		// Compare each product individually, handling time comparison properly
+		assert.Equal(t, len(expectedProducts), len(respProducts))
+		for i := range expectedProducts {
+			assert.Equal(t, expectedProducts[i].ID, respProducts[i].ID)
+			assert.Equal(t, expectedProducts[i].SKU, respProducts[i].SKU)
+			assert.Equal(t, expectedProducts[i].Name, respProducts[i].Name)
+			assert.Equal(t, expectedProducts[i].Description, respProducts[i].Description)
+			assert.Equal(t, expectedProducts[i].Price, respProducts[i].Price)
+			assert.WithinDuration(t, expectedProducts[i].CreatedAt, respProducts[i].CreatedAt, time.Second)
+		}
+
+		// Assert OpenAPI compliance
+		openapiHelper.AssertOpenAPICompliance("GET", "/api/v1/products", w)
+
 		mockService.AssertExpectations(t)
 	})
 
@@ -166,12 +218,17 @@ func TestProductHandler_ListProducts(t *testing.T) {
 
 		mockService.On("ListProducts", mock.Anything).Return(([]models.Product)(nil), assert.AnError)
 
-		r, _ := http.NewRequest("GET", "/api/v1/products", nil)
+		// Create and validate request using OpenAPI helper
+		r := openapiHelper.CreateTestRequest("GET", "/api/v1/products", nil)
 		w := httptest.NewRecorder()
 
 		handler.ListProducts(w, r)
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code, "Expected status code 500, got %d. Response body: %s", w.Code, w.Body.String())
+
+		// Even error responses should be OpenAPI compliant
+		openapiHelper.AssertOpenAPICompliance("GET", "/api/v1/products", w)
+
 		mockService.AssertExpectations(t)
 	})
 }
@@ -180,25 +237,43 @@ func TestProductHandler_GetProductBySKU(t *testing.T) {
 	mockService := new(MockProductService)
 	handler := NewProductHandler(mockService)
 
+	// Initialize OpenAPI test helper
+	openapiHelper := testutils.NewOpenAPITestHelper(t, "../../api/openapi.yaml")
+
 	// Setup a minimal chi router for testing URL parameters
 	r := chi.NewRouter()
 	r.Get("/api/v1/products/{sku}", handler.GetProductBySKU)
 
 	t.Run("Success", func(t *testing.T) {
 		sku := "TEST-SKU-123"
-		expectedProduct := &models.Product{ID: 1, SKU: sku, Name: "Test Product", Price: 99.99}
+		expectedProduct := &models.Product{ID: 1, SKU: sku, Name: "Test Product", Price: 99.99, CreatedAt: time.Now()}
 		mockService.On("GetProductBySKU", mock.Anything, sku).Return(expectedProduct, nil)
 
-		req, _ := http.NewRequest("GET", "/api/v1/products/"+sku, nil)
+		// Create and validate request using OpenAPI helper
+		req := openapiHelper.CreateTestRequest("GET", "/api/v1/products/"+sku, nil)
 		w := httptest.NewRecorder()
 
 		r.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
+
+		// Store response body to avoid consumption issues
+		responseBody := w.Body.String()
 		var respProduct models.Product
-		err := json.NewDecoder(w.Body).Decode(&respProduct)
+		err := json.Unmarshal([]byte(responseBody), &respProduct)
 		assert.NoError(t, err)
-		assert.Equal(t, *expectedProduct, respProduct)
+		// Compare time fields separately since time.Time has internal fields that may differ
+		assert.Equal(t, expectedProduct.ID, respProduct.ID)
+		assert.Equal(t, expectedProduct.SKU, respProduct.SKU)
+		assert.Equal(t, expectedProduct.Name, respProduct.Name)
+		assert.Equal(t, expectedProduct.Description, respProduct.Description)
+		assert.Equal(t, expectedProduct.Price, respProduct.Price)
+		assert.WithinDuration(t, expectedProduct.CreatedAt, respProduct.CreatedAt, time.Second)
+
+		// Assert OpenAPI compliance
+		openapiHelper.AssertOpenAPICompliance("GET", "/api/v1/products/{sku}", w)
+		openapiHelper.RequireOpenAPIFields("GET", "/api/v1/products/{sku}", "200", w)
+
 		mockService.AssertExpectations(t)
 	})
 
@@ -222,13 +297,17 @@ func TestProductHandler_GetProductBySKU(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), "SKU is required")
 		mockService.AssertNotCalled(t, "GetProductBySKU")
+
+		// Even error responses should be OpenAPI compliant
+		openapiHelper.AssertOpenAPICompliance("GET", "/api/v1/products/{sku}", w)
 	})
 
 	t.Run("Service Error - Not Found", func(t *testing.T) {
 		sku := "NONEXISTENT-SKU"
 		mockService.On("GetProductBySKU", mock.Anything, sku).Return((*models.Product)(nil), service.ErrProductNotFound)
 
-		req, _ := http.NewRequest("GET", "/api/v1/products/"+sku, nil)
+		// Create and validate request using OpenAPI helper
+		req := openapiHelper.CreateTestRequest("GET", "/api/v1/products/"+sku, nil)
 		w := httptest.NewRecorder()
 
 		r.ServeHTTP(w, req)
@@ -236,5 +315,8 @@ func TestProductHandler_GetProductBySKU(t *testing.T) {
 		// This assertion will change to http.StatusNotFound once the handler is updated
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		mockService.AssertExpectations(t)
+
+		// Even error responses should be OpenAPI compliant
+		openapiHelper.AssertOpenAPICompliance("GET", "/api/v1/products/{sku}", w)
 	})
 }

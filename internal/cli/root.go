@@ -11,6 +11,7 @@ import (
 	"cli-inventory/internal/database"
 	"cli-inventory/internal/db"
 	"cli-inventory/internal/handlers"
+	"cli-inventory/internal/openapi"
 	"cli-inventory/internal/repository"
 	"cli-inventory/internal/service"
 
@@ -105,6 +106,12 @@ var serveCmd = &cobra.Command{
 		locationHandler := handlers.NewLocationHandler(locationService)
 		stockHandler := handlers.NewStockHandler(stockService)
 
+		// Initialize OpenAPI validator
+		openapiValidator, err := openapi.NewValidator("api/openapi.yaml")
+		if err != nil {
+			return fmt.Errorf("failed to initialize OpenAPI validator: %w", err)
+		}
+
 		// Setup Chi router
 		r := chi.NewRouter()
 
@@ -115,6 +122,7 @@ var serveCmd = &cobra.Command{
 		r.Use(middleware.Recoverer)
 		r.Use(middleware.AllowContentType("application/json"))
 		r.Use(auth.Authenticator(authHandler.SessionSecret()))
+		r.Use(openapiValidator.Middleware())
 
 		// Auth Routes (no middleware)
 		r.Get("/login", authHandler.LoginHandler)

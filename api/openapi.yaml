@@ -1,0 +1,647 @@
+openapi: 3.0.3
+info:
+  title: CLI Inventory Management API
+  description: |
+    A comprehensive API for managing inventory, products, locations, and stock movements.
+    This API provides endpoints for CRUD operations on products and locations, as well as
+    stock management functionality including adding stock, moving stock between locations,
+    and generating low stock reports.
+  version: 1.0.0
+  contact:
+    name: Inventory API Team
+    email: api@inventory.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.inventory.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+paths:
+  # Product endpoints
+  /api/v1/products:
+    post:
+      tags:
+        - Products
+      summary: Create a new product
+      description: Add a new product to the inventory system
+      operationId: createProduct
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+      responses:
+        "201":
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          description: Invalid request payload or missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Product with SKU already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      tags:
+        - Products
+      summary: List all products
+      description: Retrieve a list of all products in the inventory
+      operationId: listProducts
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: List of products retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/products/{sku}:
+    get:
+      tags:
+        - Products
+      summary: Get product by SKU
+      description: Retrieve a specific product by its SKU
+      operationId: getProductBySKU
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sku
+          in: path
+          required: true
+          description: Product SKU
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Product retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          description: SKU parameter is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Location endpoints
+  /api/v1/locations:
+    post:
+      tags:
+        - Locations
+      summary: Create a new location
+      description: Add a new location to the inventory system
+      operationId: createLocation
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLocationRequest"
+      responses:
+        "201":
+          description: Location created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "400":
+          description: Invalid request payload or missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Location with name already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      tags:
+        - Locations
+      summary: List all locations
+      description: Retrieve a list of all locations in the inventory system
+      operationId: listLocations
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: List of locations retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Location"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/locations/{name}:
+    get:
+      tags:
+        - Locations
+      summary: Get location by name
+      description: Retrieve a specific location by its name
+      operationId: getLocationByName
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Location name
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Location retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "400":
+          description: Location name parameter is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Location not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Stock endpoints
+  /api/v1/stock/add:
+    post:
+      tags:
+        - Stock
+      summary: Add stock to a location
+      description: Add quantity of a product to a specific location
+      operationId: addStock
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddStockRequest"
+      responses:
+        "200":
+          description: Stock added successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Stock"
+        "400":
+          description: Invalid request payload or missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Product or location not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/stock/move:
+    post:
+      tags:
+        - Stock
+      summary: Move stock between locations
+      description: Move quantity of a product from one location to another
+      operationId: moveStock
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MoveStockRequest"
+      responses:
+        "200":
+          description: Stock moved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Stock"
+        "400":
+          description: Invalid request payload or missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Product or location not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Insufficient stock or same source/destination location
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/stock/low-stock:
+    get:
+      tags:
+        - Stock
+      summary: Get low stock report
+      description: Retrieve a report of products with stock below the specified threshold
+      operationId: getLowStockReport
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: threshold
+          in: query
+          required: false
+          description: "Stock threshold (default: 10)"
+          schema:
+            type: integer
+            minimum: 0
+            default: 10
+      responses:
+        "200":
+          description: Low stock report retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Stock"
+        "400":
+          description: Invalid threshold value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Product schemas
+    Product:
+      type: object
+      required:
+        - id
+        - sku
+        - name
+        - price
+        - created_at
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique product identifier
+        sku:
+          type: string
+          description: Stock Keeping Unit - unique product code
+        name:
+          type: string
+          description: Product name
+        description:
+          type: string
+          description: Product description
+        price:
+          type: number
+          format: double
+          description: Product price
+        created_at:
+          type: string
+          format: date-time
+          description: Product creation timestamp
+
+    CreateProductRequest:
+      type: object
+      required:
+        - sku
+        - name
+      properties:
+        sku:
+          type: string
+          description: Stock Keeping Unit - must be unique
+        name:
+          type: string
+          description: Product name
+        description:
+          type: string
+          description: Product description
+        price:
+          type: number
+          format: double
+          description: Product price
+
+    # Location schemas
+    Location:
+      type: object
+      required:
+        - id
+        - name
+        - created_at
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique location identifier
+        name:
+          type: string
+          description: Location name
+        created_at:
+          type: string
+          format: date-time
+          description: Location creation timestamp
+
+    CreateLocationRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Location name - must be unique
+
+    # Stock schemas
+    Stock:
+      type: object
+      required:
+        - id
+        - product_id
+        - location_id
+        - quantity
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique stock entry identifier
+        product_id:
+          type: integer
+          format: int64
+          description: Product identifier
+        location_id:
+          type: integer
+          format: int64
+          description: Location identifier
+        quantity:
+          type: integer
+          format: int64
+          description: Current stock quantity
+        created_at:
+          type: string
+          format: date-time
+          description: Stock entry creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Stock entry last update timestamp
+
+    StockMovement:
+      type: object
+      required:
+        - id
+        - product_id
+        - quantity
+        - movement_type
+        - created_at
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique movement identifier
+        product_id:
+          type: integer
+          format: int64
+          description: Product identifier
+        from_location_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: Source location identifier (null for stock additions)
+        to_location_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: Destination location identifier (null for stock removals)
+        quantity:
+          type: integer
+          format: int64
+          description: Quantity moved
+        movement_type:
+          type: string
+          enum: [ADD, MOVE, REMOVE]
+          description: Type of stock movement
+        created_at:
+          type: string
+          format: date-time
+          description: Movement creation timestamp
+
+    AddStockRequest:
+      type: object
+      required:
+        - product_id
+        - location_id
+        - quantity
+      properties:
+        product_id:
+          type: integer
+          format: int64
+          description: Product identifier
+        location_id:
+          type: integer
+          format: int64
+          description: Location identifier
+        quantity:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Quantity to add (must be positive)
+
+    MoveStockRequest:
+      type: object
+      required:
+        - product_id
+        - from_location_id
+        - to_location_id
+        - quantity
+      properties:
+        product_id:
+          type: integer
+          format: int64
+          description: Product identifier
+        from_location_id:
+          type: integer
+          format: int64
+          description: Source location identifier
+        to_location_id:
+          type: integer
+          format: int64
+          description: Destination location identifier
+        quantity:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Quantity to move (must be positive)
+
+    # Error schema
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+        details:
+          type: string
+          description: Additional error details
