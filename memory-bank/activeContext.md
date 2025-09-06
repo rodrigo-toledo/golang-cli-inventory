@@ -10,6 +10,8 @@ Recent changes (this session)
   - `productContext.md` — users, core flows, UX goals.
   - `systemPatterns.md` — architecture, patterns, testing rules.
   - `techContext.md` — tech stack, tooling, common commands.
+- Added README.md with explanation of memory bank purpose and maintainer checklist
+- Updated progress.md to reflect current status
 
 Important patterns & decisions
 - Memory Bank mirrors key project documentation so that a fresh session can be resumed with minimal manual context loading.
@@ -17,9 +19,8 @@ Important patterns & decisions
 - Keep the Memory Bank up-to-date whenever major decisions are made (architecture changes, new workflows, or CI/migration changes).
 
 Next steps
-1. Create `progress.md` describing current status and open tasks.
-2. Encourage maintainers to update `activeContext.md` after implementing significant changes (new features, schema changes, or CI updates).
-3. Optionally add:
+1. Encourage maintainers to update `activeContext.md` after implementing significant changes (new features, schema changes, or CI updates).
+2. Optionally add:
    - Integration notes (how to run integration tests locally).
    - Feature-specific docs (e.g., report generation specifics) under `memory-bank/` as needed.
 
