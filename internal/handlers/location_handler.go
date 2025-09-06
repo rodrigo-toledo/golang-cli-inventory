@@ -14,11 +14,11 @@ import (
 
 // LocationHandler handles HTTP requests for location operations.
 type LocationHandler struct {
-	locationService *service.LocationService
+	locationService service.LocationServiceInterface
 }
 
 // NewLocationHandler creates a new instance of LocationHandler.
-func NewLocationHandler(locationService *service.LocationService) *LocationHandler {
+func NewLocationHandler(locationService service.LocationServiceInterface) *LocationHandler {
 	return &LocationHandler{
 		locationService: locationService,
 	}

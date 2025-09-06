@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"cli-inventory/internal/models"
-	"cli-inventory/internal/repository"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -21,11 +20,11 @@ var ErrLocationNotFound = errors.New("location not found")
 // It handles operations such as creating locations, retrieving location information,
 // and listing all locations.
 type LocationService struct {
-	repo *repository.LocationRepository
+	repo LocationRepositoryInterface
 }
 
 // NewLocationService creates a new instance of LocationService with the provided location repository.
-func NewLocationService(repo *repository.LocationRepository) *LocationService {
+func NewLocationService(repo LocationRepositoryInterface) *LocationService {
 	return &LocationService{
 		repo: repo,
 	}

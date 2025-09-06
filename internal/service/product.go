@@ -14,23 +14,6 @@ import (
 // ErrProductNotFound is returned when a product cannot be found by its SKU or ID.
 var ErrProductNotFound = errors.New("product not found")
 
-// ProductRepositoryInterface defines the contract for product data access operations.
-// It specifies the methods that any product repository implementation must provide.
-type ProductRepositoryInterface interface {
-	Create(ctx context.Context, product *models.CreateProductRequest) (*models.Product, error)
-	GetBySKU(ctx context.Context, sku string) (*models.Product, error)
-	GetByID(ctx context.Context, id int) (*models.Product, error)
-	List(ctx context.Context) ([]models.Product, error)
-}
-
-// ProductServiceInterface defines the contract for product business logic operations.
-// It specifies the methods that any product service implementation must provide.
-type ProductServiceInterface interface {
-	CreateProduct(ctx context.Context, req *models.CreateProductRequest) (*models.Product, error)
-	GetProductBySKU(ctx context.Context, sku string) (*models.Product, error)
-	ListProducts(ctx context.Context) ([]models.Product, error)
-}
-
 // ProductService provides methods for managing products in the inventory system.
 // It handles operations such as creating products, retrieving product information,
 // and listing all products.

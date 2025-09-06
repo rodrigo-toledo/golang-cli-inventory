@@ -1,4 +1,4 @@
-.PHONY: generate build test integration-test test-coverage integration-test-coverage test-all clean openapi-validate test-openapi docs
+.PHONY: generate build test integration-test test-coverage integration-test-coverage test-all clean openapi-validate test-openapi docs coverage
 
 # Generate Go code from SQL queries
 generate:
@@ -19,15 +19,28 @@ integration-test:
 # Run unit tests with coverage
 test-coverage:
 	go test -coverprofile=coverage.out -covermode=count ./...
-	go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//' > coverage_percentage.txt
-	@if [ $$(cat coverage_percentage.txt) -lt 90 ]; then \
-		echo "❌ Test coverage is below 90% (current: $$(cat coverage_percentage.txt)%)"; \
+	go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//' > coverage_percentage.txt
+	@if [ $(cat coverage_percentage.txt) -lt 90 ]; then \
+		echo "❌ Test coverage is below 90% (current: $(cat coverage_percentage.txt)%)"; \
 		exit 1; \
 	else \
-		echo "✅ Test coverage is $$(cat coverage_percentage.txt)% (meets 90% threshold)"; \
+		echo "✅ Test coverage is $(cat coverage_percentage.txt)% (meets 90% threshold)"; \
 	fi
 	go tool cover -html=coverage.out -o coverage.html
-	open coverage.html
+
+# Measure and display current coverage
+coverage:
+	@echo "📊 Measuring test coverage..."
+	@go test -coverprofile=coverage.out -covermode=count ./... >/dev/null
+	@echo ""
+	@echo "📈 Coverage by package:"
+	@go tool cover -func=coverage.out | grep -v "total:" | awk '{print $1 ": " $3}' | sort
+	@echo ""
+	@echo "📈 Overall coverage:"
+	@go tool cover -func=coverage.out | grep "total:" | awk '{print $3}'
+	@echo ""
+	@echo "📄 HTML coverage report generated: coverage.html"
+	@go tool cover -html=coverage.out -o coverage.html
 
 # Run integration tests with coverage
 integration-test-coverage:
@@ -52,7 +65,7 @@ test-all:
 clean:
 	rm -rf internal/db
 	rm -rf bin
-	rm -rf coverage.out coverage.html
+	rm -rf coverage.out coverage.html coverage_percentage.txt
 
 # Validate OpenAPI specification
 openapi-validate:

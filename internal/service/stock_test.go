@@ -35,7 +35,7 @@ func (m *MockStockProductRepository) List(ctx context.Context) ([]models.Product
 	return nil, nil
 }
 
-// MockStockLocationRepository is a mock implementation of LocationRepository for testing
+// MockStockLocationRepository is a mock implementation of LocationRepositoryInterface for testing
 type MockStockLocationRepository struct {
 	locations map[int]*models.Location
 }
@@ -45,6 +45,30 @@ func (m *MockStockLocationRepository) GetByID(ctx context.Context, id int) (*mod
 		return l, nil
 	}
 	return nil, fmt.Errorf("location with ID %d not found", id)
+}
+
+func (m *MockStockLocationRepository) Create(ctx context.Context, location *models.CreateLocationRequest) (*models.Location, error) {
+	// This method is not used in stock tests, so we can return a basic implementation
+	id := len(m.locations) + 1
+	l := &models.Location{
+		ID:   id,
+		Name: location.Name,
+	}
+	if m.locations == nil {
+		m.locations = make(map[int]*models.Location)
+	}
+	m.locations[id] = l
+	return l, nil
+}
+
+func (m *MockStockLocationRepository) GetByName(ctx context.Context, name string) (*models.Location, error) {
+	// This method is not used in stock tests, so we can return a basic implementation
+	return nil, fmt.Errorf("location with name %s not found", name)
+}
+
+func (m *MockStockLocationRepository) List(ctx context.Context) ([]models.Location, error) {
+	// This method is not used in stock tests, so we can return a basic implementation
+	return []models.Location{}, nil
 }
 
 // MockStockRepositoryImpl is a mock implementation of StockRepository for testing
