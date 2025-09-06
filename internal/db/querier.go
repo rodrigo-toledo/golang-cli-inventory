@@ -21,6 +21,7 @@ type Querier interface {
 	DeleteStock(ctx context.Context, arg DeleteStockParams) error
 	GetLocationByID(ctx context.Context, id int32) (Location, error)
 	GetLocationByName(ctx context.Context, name string) (Location, error)
+	GetLowStock(ctx context.Context, quantity int32) ([]Stock, error)
 	GetProductByID(ctx context.Context, id int32) (Product, error)
 	GetProductBySKU(ctx context.Context, sku string) (Product, error)
 	GetStockByLocation(ctx context.Context, locationID int32) ([]Stock, error)
