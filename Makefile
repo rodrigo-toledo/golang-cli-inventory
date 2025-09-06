@@ -1,8 +1,12 @@
-.PHONY: generate build test integration-test test-coverage integration-test-coverage test-all clean openapi-validate test-openapi docs coverage
+.PHONY: generate build test integration-test test-coverage integration-test-coverage test-all clean openapi-validate test-openapi docs coverage mocks
 
 # Generate Go code from SQL queries
 generate:
 	sqlc generate
+
+# Generate mocks using mockery
+mocks:
+	go run github.com/vektra/mockery/v3 --config=.mockery.yaml
 
 # Build the application with JSON v2 experiment enabled
 build:
@@ -10,6 +14,7 @@ build:
 
 # Run unit tests with JSON v2 experiment enabled
 test:
+	go run github.com/vektra/mockery/v3 --config=.mockery.yml
 	GOEXPERIMENT=jsonv2 go test ./...
 
 # Run integration tests with JSON v2 experiment enabled
@@ -18,6 +23,7 @@ integration-test:
 
 # Run unit tests with coverage and JSON v2 experiment enabled
 test-coverage:
+	go run github.com/vektra/mockery/v3 --config=.mockery.yml
 	GOEXPERIMENT=jsonv2 go test -coverprofile=coverage.out -covermode=count ./...
 	GOEXPERIMENT=jsonv2 go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//' > coverage_percentage.txt
 	@if [ $(cat coverage_percentage.txt) -lt 90 ]; then \

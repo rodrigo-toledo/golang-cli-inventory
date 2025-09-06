@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	mocks_service "cli-inventory/internal/mocks/service"
 	"cli-inventory/internal/models"
 	"cli-inventory/internal/service"
 
@@ -23,7 +24,7 @@ func TestAddProductCmd(t *testing.T) {
 	}()
 
 	// Create mock repositories and service
-	mockProductRepo := new(MockProductRepository)
+	mockProductRepo := mocks_service.NewMockProductRepositoryInterface(t)
 	productService = service.NewProductService(mockProductRepo)
 
 	t.Run("Successful product creation", func(t *testing.T) {
@@ -36,10 +37,10 @@ func TestAddProductCmd(t *testing.T) {
 		}
 
 		// Mock the GetBySKU call to return an error (product not found)
-		mockProductRepo.On("GetBySKU", mock.Anything, "TEST001").Return((*models.Product)(nil), errors.New("product not found"))
+		mockProductRepo.EXPECT().GetBySKU(mock.Anything, "TEST001").Return((*models.Product)(nil), errors.New("product not found"))
 		
 		// Mock the Create call
-		mockProductRepo.On("Create", mock.Anything, mock.MatchedBy(func(req *models.CreateProductRequest) bool {
+		mockProductRepo.EXPECT().Create(mock.Anything, mock.MatchedBy(func(req *models.CreateProductRequest) bool {
 			return req.SKU == "TEST001" && req.Name == "Test Product" && req.Description == "A test product" && req.Price == 99.99
 		})).Return(expectedProduct, nil)
 
@@ -77,13 +78,9 @@ The SKU must be unique across all products.`,
 		assert.Contains(t, output, "SKU: TEST001")
 		assert.Contains(t, output, "Name: Test Product")
 		assert.Contains(t, output, "$99.99")
-
-		mockProductRepo.AssertExpectations(t)
 	})
 
 	t.Run("Invalid price format", func(t *testing.T) {
-		mockProductRepo.ExpectedCalls = nil // Clear previous expectations
-
 		// Create a test command with the same Run function as the original
 		testCmd := &cobra.Command{
 			Use:   "add-product",
@@ -114,8 +111,6 @@ The SKU must be unique across all products.`,
 
 		// Check output
 		assert.Contains(t, output, "Error: Invalid price format")
-
-		mockProductRepo.AssertExpectations(t)
 	})
 }
 
@@ -127,7 +122,7 @@ func TestFindProductCmd(t *testing.T) {
 	}()
 
 	// Create mock repositories and service
-	mockProductRepo := new(MockProductRepository)
+	mockProductRepo := mocks_service.NewMockProductRepositoryInterface(t)
 	productService = service.NewProductService(mockProductRepo)
 
 	t.Run("Successful product retrieval", func(t *testing.T) {
@@ -139,7 +134,7 @@ func TestFindProductCmd(t *testing.T) {
 			Price:       99.99,
 		}
 
-		mockProductRepo.On("GetBySKU", mock.Anything, "TEST001").Return(expectedProduct, nil)
+		mockProductRepo.EXPECT().GetBySKU(mock.Anything, "TEST001").Return(expectedProduct, nil)
 
 		// Create a test command with the same Run function as the original
 		testCmd := &cobra.Command{
@@ -176,7 +171,5 @@ This will display all product details if found.`,
 		assert.Contains(t, output, "Name: Test Product")
 		assert.Contains(t, output, "Description: A test product")
 		assert.Contains(t, output, "$99.99")
-
-		mockProductRepo.AssertExpectations(t)
 	})
 }

@@ -3,10 +3,10 @@
 ## Commands
 - Build: `make build` (JSON v2 enabled)
 - Lint: `golangci-lint run`
-- Test all: `GOEXPERIMENT=jsonv2 go test ./...`
-- Test all (Docker): `docker-compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from app`
+- Test all: `make test`
 - Test single: `GOEXPERIMENT=jsonv2 go test ./internal/<package> -run ^TestName$`
 - Coverage: `make test-coverage`
+- Generate mocks: `make mocks`
 
 ## Code Style
 - **Imports**: Grouped (stdlib, project, third-party), sorted via `goimports`
@@ -17,9 +17,10 @@
 - **Errors**: Immediate check + `if err != nil`, wrap with `%w`
 - **Tests**:
   - Table-driven with subtests (`t.Run`)
-  - Mocks in `*_test.go`
+  - Generated mocks via mockery in `internal/mocks/`
   - Use `testify/assert`
 
 ## Notes
 - Always use `GOEXPERIMENT=jsonv2` in test commands
 - `.crush/` already in `.gitignore`
+- Mocks are generated using mockery v3 and stored in `internal/mocks/`

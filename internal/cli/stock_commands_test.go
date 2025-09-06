@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	mocks_service "cli-inventory/internal/mocks/service"
 	"cli-inventory/internal/models"
 	"cli-inventory/internal/service"
 
@@ -23,10 +24,10 @@ func TestAddStockCmd(t *testing.T) {
 	}()
 
 	// Create mock repositories and service
-	mockProductRepo := new(MockProductRepository)
-	mockLocationRepo := new(MockLocationRepository)
-	mockStockRepo := new(MockStockRepository)
-	mockMovementRepo := new(MockStockMovementRepository)
+	mockProductRepo := mocks_service.NewMockProductRepositoryInterface(t)
+	mockLocationRepo := mocks_service.NewMockLocationRepositoryInterface(t)
+	mockStockRepo := mocks_service.NewMockStockRepositoryInterface(t)
+	mockMovementRepo := mocks_service.NewMockStockMovementRepositoryInterface(t)
 	
 	// Create a mock database pool (can be nil for our tests)
 	var mockDB *pgxpool.Pool
@@ -42,10 +43,10 @@ func TestAddStockCmd(t *testing.T) {
 		}
 
 		// Set up expectations
-		mockProductRepo.On("GetByID", mock.Anything, 1).Return(&models.Product{}, nil)
-		mockLocationRepo.On("GetByID", mock.Anything, 1).Return(&models.Location{}, nil)
-		mockStockRepo.On("AddStock", mock.Anything, 1, 1, 100).Return(expectedStock, nil)
-		mockMovementRepo.On("Create", mock.Anything, mock.AnythingOfType("*models.StockMovement")).Return(&models.StockMovement{}, nil)
+		mockProductRepo.EXPECT().GetByID(mock.Anything, 1).Return(&models.Product{}, nil)
+		mockLocationRepo.EXPECT().GetByID(mock.Anything, 1).Return(&models.Location{}, nil)
+		mockStockRepo.EXPECT().AddStock(mock.Anything, 1, 1, 100).Return(expectedStock, nil)
+		mockMovementRepo.EXPECT().Create(mock.Anything, mock.AnythingOfType("*models.StockMovement")).Return(&models.StockMovement{}, nil)
 
 		// Create a test command with the same Run function as the original
 		testCmd := &cobra.Command{
@@ -80,20 +81,9 @@ This will increase the stock level for the product at the specified location.`,
 		assert.Contains(t, output, "Product ID: 1")
 		assert.Contains(t, output, "Location ID: 1")
 		assert.Contains(t, output, "New Quantity: 100")
-
-		mockProductRepo.AssertExpectations(t)
-		mockLocationRepo.AssertExpectations(t)
-		mockStockRepo.AssertExpectations(t)
-		mockMovementRepo.AssertExpectations(t)
 	})
 
 	t.Run("Invalid product ID", func(t *testing.T) {
-		// Clear previous expectations
-		mockProductRepo.ExpectedCalls = nil
-		mockLocationRepo.ExpectedCalls = nil
-		mockStockRepo.ExpectedCalls = nil
-		mockMovementRepo.ExpectedCalls = nil
-
 		// Create a test command with the same Run function as the original
 		testCmd := &cobra.Command{
 			Use:   "add-stock",
@@ -124,10 +114,5 @@ This will increase the stock level for the product at the specified location.`,
 
 		// Check output
 		assert.Contains(t, output, "Error: Invalid product ID")
-
-		mockProductRepo.AssertExpectations(t)
-		mockLocationRepo.AssertExpectations(t)
-		mockStockRepo.AssertExpectations(t)
-		mockMovementRepo.AssertExpectations(t)
 	})
 }

@@ -1,0 +1,44 @@
+all: false
+dir: '{{.InterfaceDir}}'
+filename: 'mock_{{.InterfaceName}}.go'
+force-file-write: true
+formatter: goimports
+include-auto-generated: false
+log-level: info
+structname: 'Mock{{.InterfaceName}}'
+recursive: false
+require-template-schema-exists: true
+template: testify
+template-schema: '{{.Template}}.schema.json'
+packages:
+  cli-inventory/internal/service:
+    interfaces:
+      ProductRepositoryInterface:
+        config:
+          dir: internal/mocks/service
+      LocationRepositoryInterface:
+        config:
+          dir: internal/mocks/service
+      StockRepositoryInterface:
+        config:
+          dir: internal/mocks/service
+      StockMovementRepositoryInterface:
+        config:
+          dir: internal/mocks/service
+      ProductServiceInterface:
+        config:
+          dir: internal/mocks/service
+      LocationServiceInterface:
+        config:
+          dir: internal/mocks/service
+      StockServiceInterface:
+        config:
+          dir: internal/mocks/service
+  cli-inventory/internal/db:
+    interfaces:
+      Querier:
+        config:
+          dir: internal/mocks/db
+      DBTX:
+        config:
+          dir: internal/mocks/db
