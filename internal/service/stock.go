@@ -5,12 +5,16 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"cli-inventory/internal/models"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// ErrInsufficientStock is returned when an attempt is made to move more stock than is available.
+var ErrInsufficientStock = errors.New("insufficient stock")
 
 // LocationRepositoryInterface defines the contract for location data access operations.
 // It specifies the methods that any location repository implementation must provide.
@@ -130,7 +134,7 @@ func (s *StockService) MoveStock(ctx context.Context, req *models.MoveStockReque
 	}
 
 	if currentStock.Quantity < req.Quantity {
-		return nil, fmt.Errorf("insufficient stock: only %d available, requested %d", currentStock.Quantity, req.Quantity)
+		return nil, fmt.Errorf("%w: only %d available, requested %d", ErrInsufficientStock, currentStock.Quantity, req.Quantity)
 	}
 
 	// If db is nil (e.g., in tests), perform operations without transaction

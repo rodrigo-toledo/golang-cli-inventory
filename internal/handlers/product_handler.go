@@ -4,6 +4,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"cli-inventory/internal/models"
@@ -30,23 +31,21 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 
 	var req models.CreateProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request payload"})
+		HandleError(w, err) // Will result in a 400 Bad Request
 		return
 	}
 
 	// TODO: Add more robust validation (e.g., using go-playground/validator)
 	if req.SKU == "" || req.Name == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "SKU and Name are required"})
+		// For now, we create a simple error to be handled by the generic handler.
+		// This can be improved with a specific validation error type.
+		HandleError(w, fmt.Errorf("%w: SKU and Name are required", ErrBadRequest))
 		return
 	}
 
 	product, err := h.productService.CreateProduct(r.Context(), &req)
 	if err != nil {
-		// TODO: Handle specific errors (e.g., product already exists) with appropriate status codes
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		HandleError(w, err) // Handles specific errors like 409 Conflict or 500 Internal Server Error
 		return
 	}
 
@@ -63,8 +62,7 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 
 	products, err := h.productService.ListProducts(r.Context())
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		HandleError(w, err) // Handles 500 Internal Server Error
 		return
 	}
 
@@ -81,16 +79,13 @@ func (h *ProductHandler) GetProductBySKU(w http.ResponseWriter, r *http.Request)
 
 	sku := chi.URLParam(r, "sku")
 	if sku == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "SKU is required"})
+		HandleError(w, fmt.Errorf("%w: SKU is required", ErrBadRequest)) // Will result in a 400 Bad Request
 		return
 	}
 
 	product, err := h.productService.GetProductBySKU(r.Context(), sku)
 	if err != nil {
-		// TODO: Check for "not found" error and return 404
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		HandleError(w, err) // Handles 404 Not Found or 500 Internal Server Error
 		return
 	}
 

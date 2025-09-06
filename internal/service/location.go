@@ -5,11 +5,17 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"cli-inventory/internal/models"
 	"cli-inventory/internal/repository"
+
+	"github.com/jackc/pgx/v5"
 )
+
+// ErrLocationNotFound is returned when a location cannot be found by its name or ID.
+var ErrLocationNotFound = errors.New("location not found")
 
 // LocationService provides methods for managing locations in the inventory system.
 // It handles operations such as creating locations, retrieving location information,
@@ -44,6 +50,9 @@ func (s *LocationService) CreateLocation(ctx context.Context, req *models.Create
 func (s *LocationService) GetLocationByName(ctx context.Context, name string) (*models.Location, error) {
 	location, err := s.repo.GetByName(ctx, name)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("%w: %s", ErrLocationNotFound, name)
+		}
 		return nil, fmt.Errorf("failed to get location: %w", err)
 	}
 	return location, nil
