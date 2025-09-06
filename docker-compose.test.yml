@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: inventory_user
+      POSTGRES_PASSWORD: inventory_password
+      POSTGRES_DB: inventory_test_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./migrations:/docker-entrypoint-initdb.d
+
+  app:
+    image: golang:1.21-alpine
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgres://inventory_user:inventory_password@db:5432/inventory_test_db?sslmode=disable
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: ["go", "test", "./..."]
