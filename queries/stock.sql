@@ -7,6 +7,9 @@ SELECT * FROM stock WHERE product_id = $1;
 -- name: GetStockByLocation :many
 SELECT * FROM stock WHERE location_id = $1;
 
+-- name: GetLowStock :many
+SELECT * FROM stock WHERE quantity < $1;
+
 -- name: CreateStock :one
 INSERT INTO stock (product_id, location_id, quantity) 
 VALUES ($1, $2, $3) 
@@ -29,6 +32,6 @@ RETURNING *;
 
 -- name: RemoveStock :one
 UPDATE stock 
-SET quantity = quantity - $3, updated_at = NOW() 
+SET quantity = GREATEST(quantity - $3, 0), updated_at = NOW() 
 WHERE product_id = $1 AND location_id = $2 
 RETURNING *;

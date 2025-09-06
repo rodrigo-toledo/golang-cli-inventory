@@ -4,7 +4,9 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"cli-inventory/internal/models"
 	"cli-inventory/internal/testutils"
@@ -21,9 +23,6 @@ func TestProductRepository_Integration(t *testing.T) {
 	// Setup test database
 	db := testutils.SetupTestDatabase(t)
 	defer testutils.TeardownTestDatabase(t)
-
-	// Cleanup database before each test
-	testutils.CleanupTestDatabase(t, db)
 
 	// Create queries instance
 	queries := testutils.GetTestQueries(db)
@@ -58,7 +57,7 @@ func TestProductRepository_Integration(t *testing.T) {
 		assert.Equal(t, created.SKU, retrieved.SKU)
 		assert.Equal(t, created.Name, retrieved.Name)
 		assert.Equal(t, created.Description, retrieved.Description)
-		assert.Equal(t, created.Price, retrieved.Price)
+		assert.Equal(t, createReq.Price, retrieved.Price)
 
 		// Retrieve the product by ID
 		retrievedByID, err := repo.GetByID(ctx, created.ID)
@@ -83,8 +82,10 @@ func TestProductRepository_Integration(t *testing.T) {
 	t.Run("Create Duplicate SKU", func(t *testing.T) {
 		testutils.CleanupTestDatabase(t, db)
 
+		// Use a unique SKU for each test run
+		sku := fmt.Sprintf("DUPLICATE%d", time.Now().UnixNano())
 		createReq := &models.CreateProductRequest{
-			SKU:         "DUPLICATE001",
+			SKU:         sku,
 			Name:        "First Product",
 			Description: "First product",
 			Price:       10.00,
@@ -155,9 +156,6 @@ func TestLocationRepository_Integration(t *testing.T) {
 	db := testutils.SetupTestDatabase(t)
 	defer testutils.TeardownTestDatabase(t)
 
-	// Cleanup database before each test
-	testutils.CleanupTestDatabase(t, db)
-
 	// Create queries instance
 	queries := testutils.GetTestQueries(db)
 	repo := NewLocationRepository(queries)
@@ -207,8 +205,9 @@ func TestLocationRepository_Integration(t *testing.T) {
 	t.Run("Create Duplicate Name", func(t *testing.T) {
 		testutils.CleanupTestDatabase(t, db)
 
+		// Use a unique name for each test run
 		createReq := &models.CreateLocationRequest{
-			Name: "Duplicate Location",
+			Name: fmt.Sprintf("Duplicate Location %d", time.Now().UnixNano()),
 		}
 
 		// Create first location
@@ -261,9 +260,6 @@ func TestStockRepository_Integration(t *testing.T) {
 	db := testutils.SetupTestDatabase(t)
 	defer testutils.TeardownTestDatabase(t)
 
-	// Cleanup database before each test
-	testutils.CleanupTestDatabase(t, db)
-
 	// Create queries instance
 	queries := testutils.GetTestQueries(db)
 	productRepo := NewProductRepository(queries)
@@ -272,30 +268,23 @@ func TestStockRepository_Integration(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Setup test data
-	product := &models.CreateProductRequest{
-		SKU:         "STOCK001",
-		Name:        "Stock Test Product",
-		Description: "Product for stock testing",
-		Price:       19.99,
-	}
-
-	_, err := productRepo.Create(ctx, product)
-	require.NoError(t, err)
-
-	location := &models.CreateLocationRequest{
-		Name: "Stock Test Location",
-	}
-
-	_, err = locationRepo.Create(ctx, location)
-	require.NoError(t, err)
-
 	t.Run("Add and Get Stock", func(t *testing.T) {
 		testutils.CleanupTestDatabase(t, db)
 
-		// Recreate test data
+		// Setup test data
+		product := &models.CreateProductRequest{
+			SKU:         "STOCK001",
+			Name:        "Stock Test Product",
+			Description: "Product for stock testing",
+			Price:       19.99,
+		}
+
 		createdProduct, err := productRepo.Create(ctx, product)
 		require.NoError(t, err)
+
+		location := &models.CreateLocationRequest{
+			Name: "Stock Test Location",
+		}
 
 		createdLocation, err := locationRepo.Create(ctx, location)
 		require.NoError(t, err)
@@ -322,7 +311,18 @@ func TestStockRepository_Integration(t *testing.T) {
 	t.Run("Add More Stock to Existing", func(t *testing.T) {
 		testutils.CleanupTestDatabase(t, db)
 
-		// Recreate test data
+		// Setup test data
+		product := &models.CreateProductRequest{
+			SKU:         "STOCK002",
+			Name:        "Stock Test Product 2",
+			Description: "Product for stock testing 2",
+			Price:       29.99,
+		}
+
+		location := &models.CreateLocationRequest{
+			Name: "Stock Test Location 2",
+		}
+
 		createdProduct, err := productRepo.Create(ctx, product)
 		require.NoError(t, err)
 
@@ -341,7 +341,18 @@ func TestStockRepository_Integration(t *testing.T) {
 	t.Run("Remove Stock", func(t *testing.T) {
 		testutils.CleanupTestDatabase(t, db)
 
-		// Recreate test data
+		// Setup test data
+		product := &models.CreateProductRequest{
+			SKU:         "STOCK003",
+			Name:        "Stock Test Product 3",
+			Description: "Product for stock testing 3",
+			Price:       39.99,
+		}
+
+		location := &models.CreateLocationRequest{
+			Name: "Stock Test Location 3",
+		}
+
 		createdProduct, err := productRepo.Create(ctx, product)
 		require.NoError(t, err)
 
@@ -360,7 +371,18 @@ func TestStockRepository_Integration(t *testing.T) {
 	t.Run("Remove More Stock Than Available", func(t *testing.T) {
 		testutils.CleanupTestDatabase(t, db)
 
-		// Recreate test data
+		// Setup test data
+		product := &models.CreateProductRequest{
+			SKU:         "STOCK004",
+			Name:        "Stock Test Product 4",
+			Description: "Product for stock testing 4",
+			Price:       49.99,
+		}
+
+		location := &models.CreateLocationRequest{
+			Name: "Stock Test Location 4",
+		}
+
 		createdProduct, err := productRepo.Create(ctx, product)
 		require.NoError(t, err)
 

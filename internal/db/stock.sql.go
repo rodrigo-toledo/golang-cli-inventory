@@ -163,9 +163,13 @@ func (q *Queries) GetStockByProductAndLocation(ctx context.Context, arg GetStock
 
 const removeStock = `-- name: RemoveStock :one
 UPDATE stock 
-SET quantity = quantity - $3, updated_at = NOW() 
+SET quantity = GREATEST(quantity - $3, 0), updated_at = NOW() 
 WHERE product_id = $1 AND location_id = $2 
 RETURNING id, product_id, location_id, quantity, created_at, updated_at
+`
+
+const getLowStock = `-- name: GetLowStock :many
+SELECT id, product_id, location_id, quantity, created_at, updated_at FROM stock WHERE quantity < $1
 `
 
 type RemoveStockParams struct {
@@ -186,6 +190,33 @@ func (q *Queries) RemoveStock(ctx context.Context, arg RemoveStockParams) (Stock
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+func (q *Queries) GetLowStock(ctx context.Context, threshold int32) ([]Stock, error) {
+	rows, err := q.db.Query(ctx, getLowStock, threshold)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Stock
+	for rows.Next() {
+		var i Stock
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProductID,
+			&i.LocationID,
+			&i.Quantity,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateStock = `-- name: UpdateStock :one

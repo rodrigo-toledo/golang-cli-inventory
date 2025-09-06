@@ -54,6 +54,10 @@ func (r *StockRepository) GetByProductAndLocation(ctx context.Context, productID
 
 	dbStock, err := r.queries.GetStockByProductAndLocation(ctx, params)
 	if err != nil {
+		// If no stock is found, return nil instead of an error
+		if err.Error() == "no rows in result set" {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("failed to get stock: %w", err)
 	}
 
@@ -76,7 +80,22 @@ func (r *StockRepository) AddStock(ctx context.Context, productID, locationID, q
 
 	dbStock, err := r.queries.AddStock(ctx, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to add stock: %w", err)
+		// If no stock is found to update, we need to create it first
+		if err.Error() == "no rows in result set" {
+			// Create a new stock entry first
+			createParams := db.CreateStockParams{
+				ProductID:  int32(productID),
+				LocationID: int32(locationID),
+				Quantity:   int32(quantity),
+			}
+			
+			dbStock, err = r.queries.CreateStock(ctx, createParams)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create stock: %w", err)
+			}
+		} else {
+			return nil, fmt.Errorf("failed to add stock: %w", err)
+		}
 	}
 
 	return &models.Stock{
@@ -98,6 +117,10 @@ func (r *StockRepository) RemoveStock(ctx context.Context, productID, locationID
 
 	dbStock, err := r.queries.RemoveStock(ctx, params)
 	if err != nil {
+		// If no stock is found to update, return nil
+		if err.Error() == "no rows in result set" {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("failed to remove stock: %w", err)
 	}
 
@@ -112,7 +135,7 @@ func (r *StockRepository) RemoveStock(ctx context.Context, productID, locationID
 }
 
 func (r *StockRepository) GetLowStock(ctx context.Context, threshold int) ([]models.Stock, error) {
-	dbStocks, err := r.queries.GetStockByProduct(ctx, int32(threshold))
+	dbStocks, err := r.queries.GetLowStock(ctx, int32(threshold))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get low stock: %w", err)
 	}

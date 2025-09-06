@@ -19,10 +19,10 @@ func mapDBProductToModel(dbProduct db.Product) *models.Product {
 	// Price (pgtype.Numeric -> float64)
 	var priceFloat float64
 	if dbProduct.Price.Valid {
-		if val, err := dbProduct.Price.Value(); err == nil {
-			if floatVal, ok := val.(float64); ok {
-				priceFloat = floatVal
-			}
+		// Convert pgtype.Numeric to float64
+		floatVal, err := dbProduct.Price.Float64Value()
+		if err == nil && floatVal.Valid {
+			priceFloat = floatVal.Float64
 		}
 	}
 
