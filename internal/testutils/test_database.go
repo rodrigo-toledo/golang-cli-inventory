@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -31,46 +32,69 @@ func SetupTestDatabase(t *testing.T) *pgxpool.Pool {
 	// Check if we're running in a Docker environment with an existing database
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL != "" {
-		// Try to use the existing database connection with retry/backoff
-		var dbConn *pgxpool.Pool
-		var err error
-		deadline := time.Now().Add(60 * time.Second)
-		for {
-			dbConn, err = pgxpool.New(context.Background(), databaseURL)
-			if err == nil {
-				// ensure DB is reachable
-				if pingErr := dbConn.Ping(context.Background()); pingErr == nil {
-					break
-				} else {
-					err = pingErr
-					if dbConn != nil {
-						dbConn.Close()
+		once.Do(func() {
+			// Connect to the default 'postgres' database to create the test database
+			var defaultDb *pgxpool.Pool
+			var err error
+			deadline := time.Now().Add(60 * time.Second)
+			for {
+				defaultDb, err = pgxpool.New(context.Background(), "postgres://inventory_user:inventory_password@db:5432/postgres?sslmode=disable")
+				if err == nil {
+					if pingErr := defaultDb.Ping(context.Background()); pingErr == nil {
+						break
+					} else {
+						err = pingErr
+						if defaultDb != nil {
+							defaultDb.Close()
+						}
 					}
 				}
-			}
-			if time.Now().After(deadline) {
-				log.Fatalf("Could not connect to existing database after retries: %s", err)
-			}
-			time.Sleep(1 * time.Second)
-		}
-
-		// Run migrations with retry
-		migrateDeadline := time.Now().Add(60 * time.Second)
-		for {
-			if err := runMigrations(dbConn); err != nil {
-				if time.Now().After(migrateDeadline) {
-					log.Fatalf("Could not run migrations after retries: %s", err)
+				if time.Now().After(deadline) {
+					log.Fatalf("Could not connect to default database after retries: %s", err)
 				}
 				time.Sleep(1 * time.Second)
-				continue
 			}
-			break
-		}
+
+			// Create the test database if it doesn't exist
+			_, err = defaultDb.Exec(context.Background(), "CREATE DATABASE inventory_test_db")
+			if err != nil {
+				// Ignore "already exists" error
+				if !strings.Contains(err.Error(), "already exists") {
+					log.Fatalf("Could not create test database: %s", err)
+				}
+			}
+			defaultDb.Close()
+
+			// Now, connect to the test database
+			deadline = time.Now().Add(60 * time.Second)
+			for {
+				testDB, err = pgxpool.New(context.Background(), databaseURL)
+				if err == nil {
+					if pingErr := testDB.Ping(context.Background()); pingErr == nil {
+						break
+					} else {
+						err = pingErr
+						if testDB != nil {
+							testDB.Close()
+						}
+					}
+				}
+				if time.Now().After(deadline) {
+					log.Fatalf("Could not connect to existing database after retries: %s", err)
+				}
+				time.Sleep(1 * time.Second)
+			}
+
+			// Run migrations
+			if err := runMigrations(testDB); err != nil {
+				log.Fatalf("Could not run migrations: %s", err)
+			}
+		})
 
 		// Cleanup the database immediately after connecting
-		CleanupTestDatabase(t, dbConn)
+		CleanupTestDatabase(t, testDB)
 
-		return dbConn
+		return testDB
 	}
 
 	// For Docker testing, we need to ensure each test gets a clean database
@@ -86,7 +110,7 @@ func SetupTestDatabase(t *testing.T) *pgxpool.Pool {
 		// Pull the PostgreSQL image
 		err = testPool.Client.PullImage(docker.PullImageOptions{
 			Repository: "postgres",
-			Tag:        "15",
+			Tag:        "17",
 		}, docker.AuthConfiguration{})
 		if err != nil {
 			log.Fatalf("Could not pull PostgreSQL image: %s", err)
@@ -95,7 +119,7 @@ func SetupTestDatabase(t *testing.T) *pgxpool.Pool {
 		// Create a container with PostgreSQL
 		testResource, err = testPool.RunWithOptions(&dockertest.RunOptions{
 			Repository: "postgres",
-			Tag:        "15",
+			Tag:        "17",
 			Env: []string{
 				"POSTGRES_USER=testuser",
 				"POSTGRES_PASSWORD=testpass",
@@ -186,21 +210,19 @@ func CleanupTestDatabase(t *testing.T, db *pgxpool.Pool) {
 }
 
 // runMigrations creates the database schema for testing
-// If tables already exist, it will skip creating them
 func runMigrations(db *pgxpool.Pool) error {
-	ctx := context.Background()
-
-	// Since the database is already initialized via docker-compose volumes,
-	// we don't need to create the tables here. Just verify they exist.
-	var exists bool
-	err := db.QueryRow(ctx, "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'locations')").Scan(&exists)
+	// Read the migration file
+	migration, err := os.ReadFile("../../migrations/000001_create_tables.up.sql")
 	if err != nil {
-		return fmt.Errorf("could not check if tables exist: %w", err)
+		return fmt.Errorf("could not read migration file: %w", err)
 	}
 
-	// If tables don't exist, that's an error since they should be created by docker-compose
-	if !exists {
-		return fmt.Errorf("database tables not found - migration may have failed")
+	// Execute the migration
+	_, err = db.Exec(context.Background(), string(migration))
+	if err != nil {
+		if !strings.Contains(err.Error(), "already exists") {
+			return fmt.Errorf("could not run migrations: %w", err)
+		}
 	}
 
 	return nil
