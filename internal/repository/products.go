@@ -10,7 +10,7 @@ import (
 	"cli-inventory/internal/db"
 	"cli-inventory/internal/models"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	pgtype "github.com/jackc/pgx/v5/pgtype"
 )
 
 // ProductRepository provides methods for interacting with product data in the database.
@@ -47,30 +47,7 @@ func (r *ProductRepository) Create(ctx context.Context, product *models.CreatePr
 		return nil, fmt.Errorf("failed to create product: %w", err)
 	}
 
-	// Convert pgtype.Text to string
-	descriptionStr := ""
-	if dbProduct.Description.Valid {
-		descriptionStr = dbProduct.Description.String
-	}
-
-	// Convert pgtype.Numeric to float64
-	var priceFloat float64
-	if dbProduct.Price.Valid {
-		if val, err := dbProduct.Price.Value(); err == nil {
-			if floatVal, ok := val.(float64); ok {
-				priceFloat = floatVal
-			}
-		}
-	}
-
-	return &models.Product{
-		ID:          int(dbProduct.ID),
-		SKU:         dbProduct.Sku,
-		Name:        dbProduct.Name,
-		Description: descriptionStr,
-		Price:       priceFloat,
-		CreatedAt:   dbProduct.CreatedAt.Time,
-	}, nil
+	return mapDBProductToModel(dbProduct), nil
 }
 
 func (r *ProductRepository) GetBySKU(ctx context.Context, sku string) (*models.Product, error) {
@@ -79,30 +56,7 @@ func (r *ProductRepository) GetBySKU(ctx context.Context, sku string) (*models.P
 		return nil, fmt.Errorf("failed to get product by SKU: %w", err)
 	}
 
-	// Convert pgtype.Text to string
-	descriptionStr := ""
-	if dbProduct.Description.Valid {
-		descriptionStr = dbProduct.Description.String
-	}
-
-	// Convert pgtype.Numeric to float64
-	var priceFloat float64
-	if dbProduct.Price.Valid {
-		if val, err := dbProduct.Price.Value(); err == nil {
-			if floatVal, ok := val.(float64); ok {
-				priceFloat = floatVal
-			}
-		}
-	}
-
-	return &models.Product{
-		ID:          int(dbProduct.ID),
-		SKU:         dbProduct.Sku,
-		Name:        dbProduct.Name,
-		Description: descriptionStr,
-		Price:       priceFloat,
-		CreatedAt:   dbProduct.CreatedAt.Time,
-	}, nil
+	return mapDBProductToModel(dbProduct), nil
 }
 
 func (r *ProductRepository) GetByID(ctx context.Context, id int) (*models.Product, error) {
@@ -111,30 +65,7 @@ func (r *ProductRepository) GetByID(ctx context.Context, id int) (*models.Produc
 		return nil, fmt.Errorf("failed to get product by ID: %w", err)
 	}
 
-	// Convert pgtype.Text to string
-	descriptionStr := ""
-	if dbProduct.Description.Valid {
-		descriptionStr = dbProduct.Description.String
-	}
-
-	// Convert pgtype.Numeric to float64
-	var priceFloat float64
-	if dbProduct.Price.Valid {
-		if val, err := dbProduct.Price.Value(); err == nil {
-			if floatVal, ok := val.(float64); ok {
-				priceFloat = floatVal
-			}
-		}
-	}
-
-	return &models.Product{
-		ID:          int(dbProduct.ID),
-		SKU:         dbProduct.Sku,
-		Name:        dbProduct.Name,
-		Description: descriptionStr,
-		Price:       priceFloat,
-		CreatedAt:   dbProduct.CreatedAt.Time,
-	}, nil
+	return mapDBProductToModel(dbProduct), nil
 }
 
 func (r *ProductRepository) List(ctx context.Context) ([]models.Product, error) {
@@ -143,33 +74,7 @@ func (r *ProductRepository) List(ctx context.Context) ([]models.Product, error) 
 		return nil, fmt.Errorf("failed to list products: %w", err)
 	}
 
-	products := make([]models.Product, len(dbProducts))
-	for i, dbProduct := range dbProducts {
-		// Convert pgtype.Text to string
-		descriptionStr := ""
-		if dbProduct.Description.Valid {
-			descriptionStr = dbProduct.Description.String
-		}
-
-		// Convert pgtype.Numeric to float64
-		var priceFloat float64
-		if dbProduct.Price.Valid {
-			if val, err := dbProduct.Price.Value(); err == nil {
-				if floatVal, ok := val.(float64); ok {
-					priceFloat = floatVal
-				}
-			}
-		}
-
-		products[i] = models.Product{
-			ID:          int(dbProduct.ID),
-			SKU:         dbProduct.Sku,
-			Name:        dbProduct.Name,
-			Description: descriptionStr,
-			Price:       priceFloat,
-			CreatedAt:   dbProduct.CreatedAt.Time,
-		}
-	}
+	products := mapDBProductsToModels(dbProducts)
 
 	return products, nil
 }
