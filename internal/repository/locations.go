@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rodrigotoledo/cli-inventory/internal/db"
-	"github.com/rodrigotoledo/cli-inventory/internal/models"
+	"cli-inventory/internal/db"
+	"cli-inventory/internal/models"
 )
 
 type LocationRepository struct {
@@ -19,11 +19,7 @@ func NewLocationRepository(queries *db.Queries) *LocationRepository {
 }
 
 func (r *LocationRepository) Create(ctx context.Context, location *models.CreateLocationRequest) (*models.Location, error) {
-	params := db.CreateLocationParams{
-		Name: location.Name,
-	}
-
-	dbLocation, err := r.queries.CreateLocation(ctx, params)
+	dbLocation, err := r.queries.CreateLocation(ctx, location.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create location: %w", err)
 	}
@@ -31,7 +27,7 @@ func (r *LocationRepository) Create(ctx context.Context, location *models.Create
 	return &models.Location{
 		ID:        int(dbLocation.ID),
 		Name:      dbLocation.Name,
-		CreatedAt: dbLocation.CreatedAt,
+		CreatedAt: dbLocation.CreatedAt.Time,
 	}, nil
 }
 
@@ -44,7 +40,7 @@ func (r *LocationRepository) GetByName(ctx context.Context, name string) (*model
 	return &models.Location{
 		ID:        int(dbLocation.ID),
 		Name:      dbLocation.Name,
-		CreatedAt: dbLocation.CreatedAt,
+		CreatedAt: dbLocation.CreatedAt.Time,
 	}, nil
 }
 
@@ -57,7 +53,7 @@ func (r *LocationRepository) GetByID(ctx context.Context, id int) (*models.Locat
 	return &models.Location{
 		ID:        int(dbLocation.ID),
 		Name:      dbLocation.Name,
-		CreatedAt: dbLocation.CreatedAt,
+		CreatedAt: dbLocation.CreatedAt.Time,
 	}, nil
 }
 
@@ -72,7 +68,7 @@ func (r *LocationRepository) List(ctx context.Context) ([]models.Location, error
 		locations[i] = models.Location{
 			ID:        int(dbLocation.ID),
 			Name:      dbLocation.Name,
-			CreatedAt: dbLocation.CreatedAt,
+			CreatedAt: dbLocation.CreatedAt.Time,
 		}
 	}
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/rodrigotoledo/cli-inventory/internal/models"
+	"cli-inventory/internal/models"
 )
 
 // MockDB is a mock implementation of pgxpool.Pool for testing

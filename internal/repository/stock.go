@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rodrigotoledo/cli-inventory/internal/db"
-	"github.com/rodrigotoledo/cli-inventory/internal/models"
+	"cli-inventory/internal/db"
+	"cli-inventory/internal/models"
 )
 
 type StockRepository struct {
@@ -35,8 +35,8 @@ func (r *StockRepository) Create(ctx context.Context, stock *models.AddStockRequ
 		ProductID:  int(dbStock.ProductID),
 		LocationID: int(dbStock.LocationID),
 		Quantity:   int(dbStock.Quantity),
-		CreatedAt:  dbStock.CreatedAt,
-		UpdatedAt:  dbStock.UpdatedAt,
+		CreatedAt:  dbStock.CreatedAt.Time,
+		UpdatedAt:  dbStock.UpdatedAt.Time,
 	}, nil
 }
 
@@ -56,8 +56,8 @@ func (r *StockRepository) GetByProductAndLocation(ctx context.Context, productID
 		ProductID:  int(dbStock.ProductID),
 		LocationID: int(dbStock.LocationID),
 		Quantity:   int(dbStock.Quantity),
-		CreatedAt:  dbStock.CreatedAt,
-		UpdatedAt:  dbStock.UpdatedAt,
+		CreatedAt:  dbStock.CreatedAt.Time,
+		UpdatedAt:  dbStock.UpdatedAt.Time,
 	}, nil
 }
 
@@ -78,8 +78,8 @@ func (r *StockRepository) AddStock(ctx context.Context, productID, locationID, q
 		ProductID:  int(dbStock.ProductID),
 		LocationID: int(dbStock.LocationID),
 		Quantity:   int(dbStock.Quantity),
-		CreatedAt:  dbStock.CreatedAt,
-		UpdatedAt:  dbStock.UpdatedAt,
+		CreatedAt:  dbStock.CreatedAt.Time,
+		UpdatedAt:  dbStock.UpdatedAt.Time,
 	}, nil
 }
 
@@ -100,8 +100,8 @@ func (r *StockRepository) RemoveStock(ctx context.Context, productID, locationID
 		ProductID:  int(dbStock.ProductID),
 		LocationID: int(dbStock.LocationID),
 		Quantity:   int(dbStock.Quantity),
-		CreatedAt:  dbStock.CreatedAt,
-		UpdatedAt:  dbStock.UpdatedAt,
+		CreatedAt:  dbStock.CreatedAt.Time,
+		UpdatedAt:  dbStock.UpdatedAt.Time,
 	}, nil
 }
 
@@ -118,8 +118,8 @@ func (r *StockRepository) GetLowStock(ctx context.Context, threshold int) ([]mod
 			ProductID:  int(dbStock.ProductID),
 			LocationID: int(dbStock.LocationID),
 			Quantity:   int(dbStock.Quantity),
-			CreatedAt:  dbStock.CreatedAt,
-			UpdatedAt:  dbStock.UpdatedAt,
+			CreatedAt:  dbStock.CreatedAt.Time,
+			UpdatedAt:  dbStock.UpdatedAt.Time,
 		}
 	}
 

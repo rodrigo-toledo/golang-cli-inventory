@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/rodrigotoledo/cli-inventory/internal/database"
-	"github.com/rodrigotoledo/cli-inventory/internal/db"
-	"github.com/rodrigotoledo/cli-inventory/internal/models"
-	"github.com/rodrigotoledo/cli-inventory/internal/repository"
-	"github.com/rodrigotoledo/cli-inventory/internal/service"
+	"cli-inventory/internal/database"
+	"cli-inventory/internal/db"
+	"cli-inventory/internal/models"
+	"cli-inventory/internal/repository"
+	"cli-inventory/internal/service"
 )
 
 func main() {

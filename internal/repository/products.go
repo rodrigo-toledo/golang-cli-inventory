@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rodrigotoledo/cli-inventory/internal/db"
-	"github.com/rodrigotoledo/cli-inventory/internal/models"
+	"cli-inventory/internal/db"
+	"cli-inventory/internal/models"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ProductRepository struct {
@@ -19,11 +21,19 @@ func NewProductRepository(queries *db.Queries) *ProductRepository {
 }
 
 func (r *ProductRepository) Create(ctx context.Context, product *models.CreateProductRequest) (*models.Product, error) {
+	// Convert string to pgtype.Text
+	description := pgtype.Text{}
+	description.Scan(product.Description)
+
+	// Convert float64 to pgtype.Numeric
+	price := pgtype.Numeric{}
+	price.Scan(product.Price)
+
 	params := db.CreateProductParams{
 		Sku:         product.SKU,
 		Name:        product.Name,
-		Description: product.Description,
-		Price:       product.Price,
+		Description: description,
+		Price:       price,
 	}
 
 	dbProduct, err := r.queries.CreateProduct(ctx, params)
@@ -31,13 +41,29 @@ func (r *ProductRepository) Create(ctx context.Context, product *models.CreatePr
 		return nil, fmt.Errorf("failed to create product: %w", err)
 	}
 
+	// Convert pgtype.Text to string
+	descriptionStr := ""
+	if dbProduct.Description.Valid {
+		descriptionStr = dbProduct.Description.String
+	}
+
+	// Convert pgtype.Numeric to float64
+	var priceFloat float64
+	if dbProduct.Price.Valid {
+		if val, err := dbProduct.Price.Value(); err == nil {
+			if floatVal, ok := val.(float64); ok {
+				priceFloat = floatVal
+			}
+		}
+	}
+
 	return &models.Product{
 		ID:          int(dbProduct.ID),
 		SKU:         dbProduct.Sku,
 		Name:        dbProduct.Name,
-		Description: dbProduct.Description,
-		Price:       dbProduct.Price,
-		CreatedAt:   dbProduct.CreatedAt,
+		Description: descriptionStr,
+		Price:       priceFloat,
+		CreatedAt:   dbProduct.CreatedAt.Time,
 	}, nil
 }
 
@@ -47,13 +73,29 @@ func (r *ProductRepository) GetBySKU(ctx context.Context, sku string) (*models.P
 		return nil, fmt.Errorf("failed to get product by SKU: %w", err)
 	}
 
+	// Convert pgtype.Text to string
+	descriptionStr := ""
+	if dbProduct.Description.Valid {
+		descriptionStr = dbProduct.Description.String
+	}
+
+	// Convert pgtype.Numeric to float64
+	var priceFloat float64
+	if dbProduct.Price.Valid {
+		if val, err := dbProduct.Price.Value(); err == nil {
+			if floatVal, ok := val.(float64); ok {
+				priceFloat = floatVal
+			}
+		}
+	}
+
 	return &models.Product{
 		ID:          int(dbProduct.ID),
 		SKU:         dbProduct.Sku,
 		Name:        dbProduct.Name,
-		Description: dbProduct.Description,
-		Price:       dbProduct.Price,
-		CreatedAt:   dbProduct.CreatedAt,
+		Description: descriptionStr,
+		Price:       priceFloat,
+		CreatedAt:   dbProduct.CreatedAt.Time,
 	}, nil
 }
 
@@ -63,13 +105,29 @@ func (r *ProductRepository) GetByID(ctx context.Context, id int) (*models.Produc
 		return nil, fmt.Errorf("failed to get product by ID: %w", err)
 	}
 
+	// Convert pgtype.Text to string
+	descriptionStr := ""
+	if dbProduct.Description.Valid {
+		descriptionStr = dbProduct.Description.String
+	}
+
+	// Convert pgtype.Numeric to float64
+	var priceFloat float64
+	if dbProduct.Price.Valid {
+		if val, err := dbProduct.Price.Value(); err == nil {
+			if floatVal, ok := val.(float64); ok {
+				priceFloat = floatVal
+			}
+		}
+	}
+
 	return &models.Product{
 		ID:          int(dbProduct.ID),
 		SKU:         dbProduct.Sku,
 		Name:        dbProduct.Name,
-		Description: dbProduct.Description,
-		Price:       dbProduct.Price,
-		CreatedAt:   dbProduct.CreatedAt,
+		Description: descriptionStr,
+		Price:       priceFloat,
+		CreatedAt:   dbProduct.CreatedAt.Time,
 	}, nil
 }
 
@@ -81,13 +139,29 @@ func (r *ProductRepository) List(ctx context.Context) ([]models.Product, error) 
 
 	products := make([]models.Product, len(dbProducts))
 	for i, dbProduct := range dbProducts {
+		// Convert pgtype.Text to string
+		descriptionStr := ""
+		if dbProduct.Description.Valid {
+			descriptionStr = dbProduct.Description.String
+		}
+
+		// Convert pgtype.Numeric to float64
+		var priceFloat float64
+		if dbProduct.Price.Valid {
+			if val, err := dbProduct.Price.Value(); err == nil {
+				if floatVal, ok := val.(float64); ok {
+					priceFloat = floatVal
+				}
+			}
+		}
+
 		products[i] = models.Product{
 			ID:          int(dbProduct.ID),
 			SKU:         dbProduct.Sku,
 			Name:        dbProduct.Name,
-			Description: dbProduct.Description,
-			Price:       dbProduct.Price,
-			CreatedAt:   dbProduct.CreatedAt,
+			Description: descriptionStr,
+			Price:       priceFloat,
+			CreatedAt:   dbProduct.CreatedAt.Time,
 		}
 	}
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/rodrigotoledo/cli-inventory/internal/models"
+	"cli-inventory/internal/models"
 )
 
 // MockProductRepository is a mock implementation of ProductRepositoryInterface for testing
@@ -49,7 +49,9 @@ func (m *MockProductRepository) List(ctx context.Context) ([]models.Product, err
 }
 
 func TestProductService_CreateProduct(t *testing.T) {
-	repo := &MockProductRepository{}
+	repo := &MockProductRepository{
+		products: make(map[string]*models.Product),
+	}
 	service := NewProductService(repo)
 
 	ctx := context.Background()
@@ -75,7 +77,9 @@ func TestProductService_CreateProduct(t *testing.T) {
 }
 
 func TestProductService_CreateProduct_DuplicateSKU(t *testing.T) {
-	repo := &MockProductRepository{}
+	repo := &MockProductRepository{
+		products: make(map[string]*models.Product),
+	}
 	service := NewProductService(repo)
 
 	ctx := context.Background()
@@ -100,7 +104,9 @@ func TestProductService_CreateProduct_DuplicateSKU(t *testing.T) {
 }
 
 func TestProductService_GetProductBySKU(t *testing.T) {
-	repo := &MockProductRepository{}
+	repo := &MockProductRepository{
+		products: make(map[string]*models.Product),
+	}
 	service := NewProductService(repo)
 
 	ctx := context.Background()

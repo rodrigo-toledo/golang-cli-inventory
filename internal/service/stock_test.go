@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/rodrigotoledo/cli-inventory/internal/models"
+	"cli-inventory/internal/models"
 )
 
 // MockStockProductRepository is a mock implementation of ProductRepositoryInterface for testing

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rodrigotoledo/cli-inventory/internal/models"
+	"cli-inventory/internal/models"
 )
 
 type ProductRepositoryInterface interface {
