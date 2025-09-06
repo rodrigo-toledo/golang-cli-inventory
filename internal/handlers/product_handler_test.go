@@ -5,7 +5,7 @@ package handlers
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -316,7 +316,7 @@ func TestProductHandler_GetProductBySKU(t *testing.T) {
 		// The handler now correctly maps ErrProductNotFound to 404
 		assert.Equal(t, http.StatusNotFound, w.Code)
 		var errorResp ErrorResponse
-		err := json.NewDecoder(w.Body).Decode(&errorResp)
+		err := json.Unmarshal(w.Body.Bytes(), &errorResp)
 		assert.NoError(t, err)
 		assert.Equal(t, "Resource not found", errorResp.Error)
 		assert.Contains(t, errorResp.Details, service.ErrProductNotFound.Error())

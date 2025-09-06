@@ -3,7 +3,7 @@
 package handlers
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 
 	"cli-inventory/internal/models"
@@ -27,7 +27,7 @@ func NewLocationHandler(locationService service.LocationServiceInterface) *Locat
 // CreateLocation handles POST /api/v1/locations requests.
 func (h *LocationHandler) CreateLocation(w http.ResponseWriter, r *http.Request) {
 	var req models.CreateLocationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.UnmarshalRead(r.Body, &req); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
@@ -46,7 +46,7 @@ func (h *LocationHandler) CreateLocation(w http.ResponseWriter, r *http.Request)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(location); err != nil {
+	if err := json.MarshalWrite(w, location); err != nil {
 		// Log error
 		// log.Printf("Failed to encode response: %v", err)
 	}
@@ -62,7 +62,7 @@ func (h *LocationHandler) ListLocations(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(locations); err != nil {
+	if err := json.MarshalWrite(w, locations); err != nil {
 		// Log error
 		// log.Printf("Failed to encode response: %v", err)
 	}
@@ -85,7 +85,7 @@ func (h *LocationHandler) GetLocationByName(w http.ResponseWriter, r *http.Reque
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(location); err != nil {
+	if err := json.MarshalWrite(w, location); err != nil {
 		// Log error
 		// log.Printf("Failed to encode response: %v", err)
 	}

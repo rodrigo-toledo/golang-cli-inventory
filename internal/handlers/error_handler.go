@@ -3,9 +3,10 @@
 package handlers
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"net/http"
+	"strings"
 
 	"cli-inventory/internal/service"
 )
@@ -50,9 +51,12 @@ func HandleError(w http.ResponseWriter, err error) {
 
 // isJSONError checks if the error is related to JSON decoding.
 func isJSONError(err error) bool {
-	var syntaxError *json.SyntaxError
-	var unmarshalTypeError *json.UnmarshalTypeError
-	return errors.As(err, &syntaxError) || errors.As(err, &unmarshalTypeError)
+	var syntaxError *json.SemanticError
+	var unmarshalTypeError *json.SemanticError
+	// Check if it's a syntactic error by checking the error message
+	// This is a workaround since we can't directly import jsontext.SyntacticError
+	return errors.As(err, &syntaxError) || errors.As(err, &unmarshalTypeError) || 
+		(err != nil && (strings.Contains(err.Error(), "jsontext:") || strings.Contains(err.Error(), "invalid character")))
 }
 
 // respondWithError is a helper function to send a JSON error response.
@@ -65,7 +69,8 @@ func respondWithError(w http.ResponseWriter, code int, message string, details s
 		Details: details,
 	}
 
-	if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
+	// Use JSON v2 MarshalWrite function
+	if err := json.MarshalWrite(w, errorResponse); err != nil {
 		// Log the error that occurred while trying to send the error response.
 		// This is a fallback, as we can't do much more if encoding fails here.
 		// In a real application, a proper logger would be used.

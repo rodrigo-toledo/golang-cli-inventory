@@ -13,7 +13,7 @@ This is a command-line interface (CLI) application for managing inventory. It al
 
 ## Technical Stack
 
-- Language: Go 1.24
+- Language: Go 1.25 (with experimental JSON v2 package)
 - Database: PostgreSQL 15
 - Docker and Docker Compose for containerization
 - SQLC for type-safe database queries
@@ -24,7 +24,7 @@ This is a command-line interface (CLI) application for managing inventory. It al
 
 ### Prerequisites
 
-- Go 1.24 or later
+- Go 1.25 or later (with JSON v2 experimental package)
 - Docker and Docker Compose
 - PostgreSQL client (for direct database access if needed)
 - SQLC (for code generation from SQL queries)
@@ -302,6 +302,31 @@ Low-stock report example:
 
 Available report types:
 - `low-stock [threshold]` - Show products with stock below specified threshold
+
+## JSON v2 Migration
+
+This project uses the experimental JSON v2 package introduced in Go 1.25. To build and run the project with the new JSON implementation, you need to enable the `jsonv2` experiment:
+
+```bash
+GOEXPERIMENT=jsonv2 go build -o bin/inventory cmd/inventory/main.go
+```
+
+Or to run directly:
+
+```bash
+GOEXPERIMENT=jsonv2 go run cmd/inventory/main.go [command] [arguments]
+```
+
+The JSON v2 package provides performance improvements and new features while maintaining compatibility with the existing `encoding/json` package.
+
+### Benefits of JSON v2
+
+- Improved performance for JSON encoding and decoding
+- Better error messages
+- Enhanced streaming capabilities
+- More efficient memory usage
+
+For more information about the JSON v2 package, see the [Go 1.25 release notes](https://go.dev/doc/go1.25#json_v2).
 
 ## Database Schema
 
