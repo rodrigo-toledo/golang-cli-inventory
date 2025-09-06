@@ -1,3 +1,6 @@
+// Package service provides business logic implementations for the inventory management system.
+// It contains services that handle the core functionality such as product management,
+// stock management, and location management.
 package service
 
 import (
@@ -8,10 +11,14 @@ import (
 	"cli-inventory/internal/repository"
 )
 
+// LocationService provides methods for managing locations in the inventory system.
+// It handles operations such as creating locations, retrieving location information,
+// and listing all locations.
 type LocationService struct {
 	repo *repository.LocationRepository
 }
 
+// NewLocationService creates a new instance of LocationService with the provided location repository.
 func NewLocationService(repo *repository.LocationRepository) *LocationService {
 	return &LocationService{
 		repo: repo,

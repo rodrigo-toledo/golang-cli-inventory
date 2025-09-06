@@ -1,3 +1,6 @@
+// Package repository provides data access implementations for the inventory management system.
+// It contains repositories that handle interactions with the database for products, locations,
+// stock, and stock movements.
 package repository
 
 import (
@@ -10,10 +13,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+// StockMovementRepository provides methods for interacting with stock movement data in the database.
+// It handles operations related to tracking stock movements such as additions, removals, and transfers.
 type StockMovementRepository struct {
 	queries *db.Queries
 }
 
+// NewStockMovementRepository creates a new instance of StockMovementRepository with the provided database queries.
 func NewStockMovementRepository(queries *db.Queries) *StockMovementRepository {
 	return &StockMovementRepository{
 		queries: queries,

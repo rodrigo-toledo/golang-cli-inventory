@@ -1,3 +1,6 @@
+// Package repository provides data access implementations for the inventory management system.
+// It contains repositories that handle interactions with the database for products, locations,
+// stock, and stock movements.
 package repository
 
 import (
@@ -8,10 +11,13 @@ import (
 	"cli-inventory/internal/models"
 )
 
+// LocationRepository provides methods for interacting with location data in the database.
+// It implements the LocationRepositoryInterface defined in the service package.
 type LocationRepository struct {
 	queries *db.Queries
 }
 
+// NewLocationRepository creates a new instance of LocationRepository with the provided database queries.
 func NewLocationRepository(queries *db.Queries) *LocationRepository {
 	return &LocationRepository{
 		queries: queries,
