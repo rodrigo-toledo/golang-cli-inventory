@@ -79,7 +79,162 @@ go build -o bin/inventory cmd/inventory/main.go
 
 ## Usage
 
-### Add a Product
+### HTTP API Server
+
+The application can also be started as an HTTP server to expose a RESTful API.
+
+#### Starting the Server
+
+Ensure the database is running (`docker-compose up -d`). Then, start the API server:
+
+```bash
+./bin/inventory serve
+```
+
+The server will start on `http://localhost:8080`.
+
+#### API Endpoints
+
+The API provides the following endpoints. All requests and responses use JSON.
+
+**Base URL:** `http://localhost:8080/api/v1`
+
+---
+
+**Products**
+
+*   **List all products**
+    *   `GET /products`
+    *   **Response:** `200 OK` with an array of product objects.
+    *   **Example `curl`:**
+        ```bash
+        curl http://localhost:8080/api/v1/products
+        ```
+
+*   **Get a single product by SKU**
+    *   `GET /products/{sku}`
+    *   **Response:** `200 OK` with a single product object.
+    *   **Example `curl`:**
+        ```bash
+        curl http://localhost:8080/api/v1/products/PROD001
+        ```
+
+*   **Create a new product**
+    *   `POST /products`
+    *   **Request Body:** `CreateProductRequest` object.
+        ```json
+        {
+          "sku": "PROD003",
+          "name": "Wireless Mouse",
+          "description": "Ergonomic wireless mouse",
+          "price": 25.50
+        }
+        ```
+    *   **Response:** `201 Created` with the created product object.
+    *   **Example `curl`:**
+        ```bash
+        curl -X POST http://localhost:8080/api/v1/products \
+        -H "Content-Type: application/json" \
+        -d '{"sku":"PROD003","name":"Wireless Mouse","description":"Ergonomic wireless mouse","price":25.50}'
+        ```
+
+---
+
+**Locations**
+
+*   **List all locations**
+    *   `GET /locations`
+    *   **Response:** `200 OK` with an array of location objects.
+    *   **Example `curl`:**
+        ```bash
+        curl http://localhost:8080/api/v1/locations
+        ```
+
+*   **Get a single location by name**
+    *   `GET /locations/{name}`
+    *   **Response:** `200 OK` with a single location object.
+    *   **Example `curl`:**
+        ```bash
+        curl http://localhost:8080/api/v1locations/Main%20Warehouse
+        ```
+
+*   **Create a new location**
+    *   `POST /locations`
+    *   **Request Body:** `CreateLocationRequest` object.
+        ```json
+        {
+          "name": "Secondary Warehouse"
+        }
+        ```
+    *   **Response:** `201 Created` with the created location object.
+    *   **Example `curl`:**
+        ```bash
+        curl -X POST http://localhost:8080/api/v1/locations \
+        -H "Content-Type: application/json" \
+        -d '{"name":"Secondary Warehouse"}'
+        ```
+
+---
+
+**Stock**
+
+*   **Add stock to a product at a location**
+    *   `POST /stock/add`
+    *   **Request Body:** `AddStockRequest` object.
+        ```json
+        {
+          "product_id": 1,
+          "location_id": 1,
+          "quantity": 100
+        }
+        ```
+    *   **Response:** `200 OK` with the updated stock object for that product/location.
+    *   **Example `curl`:**
+        ```bash
+        curl -X POST http://localhost:8080/api/v1/stock/add \
+        -H "Content-Type: application/json" \
+        -d '{"product_id":1,"location_id":1,"quantity":100}'
+        ```
+
+*   **Move stock between locations**
+    *   `POST /stock/move`
+    *   **Request Body:** `MoveStockRequest` object.
+        ```json
+        {
+          "product_id": 1,
+          "from_location_id": 1,
+          "to_location_id": 2,
+          "quantity": 10
+        }
+        ```
+    *   **Response:** `200 OK` with the stock object at the destination location after the move.
+    *   **Example `curl`:**
+        ```bash
+        curl -X POST http://localhost:8080/api/v1/stock/move \
+        -H "Content-Type: application/json" \
+        -d '{"product_id":1,"from_location_id":1,"to_location_id":2,"quantity":10}'
+        ```
+
+*   **Get low stock report**
+    *   `GET /stock/low-stock?threshold={threshold}`
+    *   **Query Parameter:** `threshold` (optional, integer, defaults to 10).
+    *   **Response:** `200 OK` with an array of stock objects where quantity is below the threshold.
+    *   **Example `curl`:**
+        ```bash
+        # Get stock below 5 units
+        curl http://localhost:8080/api/v1/stock/low-stock?threshold=5
+
+        # Get stock below default threshold (10)
+        curl http://localhost:8080/api/v1/stock/low-stock
+        ```
+
+#### Error Responses
+
+*   **`400 Bad Request`**: Invalid JSON payload, missing required fields, or invalid input values (e.g., negative quantity).
+*   **`404 Not Found`**: Resource not found (e.g., product with a given SKU does not exist). *Note: Currently, most "not found" scenarios return `500 Internal Server Error`, but this is planned to be improved to `404`.*
+*   **`500 Internal Server Error`**: Unexpected server-side errors (e.g., database connection issues, service layer errors not specifically handled).
+
+### Add a Product (CLI)
 
 ```bash
 ./bin/inventory add-product <sku> <name> <description> <price>
