@@ -12,8 +12,8 @@ import (
 )
 
 const createStockMovement = `-- name: CreateStockMovement :one
-INSERT INTO stock_movements (product_id, from_location_id, to_location_id, quantity, movement_type) 
-VALUES ($1, $2, $3, $4, $5) 
+INSERT INTO stock_movements (product_id, from_location_id, to_location_id, quantity, movement_type)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id, product_id, from_location_id, to_location_id, quantity, movement_type, created_at
 `
 
@@ -46,76 +46,76 @@ func (q *Queries) CreateStockMovement(ctx context.Context, arg CreateStockMoveme
 	return i, err
 }
 
-const getStockMovementsByLocation = `-- name: GetStockMovementsByLocation :many
-SELECT id, product_id, from_location_id, to_location_id, quantity, movement_type, created_at FROM stock_movements WHERE from_location_id = $1 OR to_location_id = $1 ORDER BY created_at DESC
-`
-
-func (q *Queries) GetStockMovementsByLocation(ctx context.Context, fromLocationID pgtype.Int4) ([]StockMovement, error) {
-	rows, err := q.db.Query(ctx, getStockMovementsByLocation, fromLocationID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []StockMovement
-	for rows.Next() {
-		var i StockMovement
-		if err := rows.Scan(
-			&i.ID,
-			&i.ProductID,
-			&i.FromLocationID,
-			&i.ToLocationID,
-			&i.Quantity,
-			&i.MovementType,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getStockMovementsByProduct = `-- name: GetStockMovementsByProduct :many
-SELECT id, product_id, from_location_id, to_location_id, quantity, movement_type, created_at FROM stock_movements WHERE product_id = $1 ORDER BY created_at DESC
-`
-
-func (q *Queries) GetStockMovementsByProduct(ctx context.Context, productID int32) ([]StockMovement, error) {
-	rows, err := q.db.Query(ctx, getStockMovementsByProduct, productID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []StockMovement
-	for rows.Next() {
-		var i StockMovement
-		if err := rows.Scan(
-			&i.ID,
-			&i.ProductID,
-			&i.FromLocationID,
-			&i.ToLocationID,
-			&i.Quantity,
-			&i.MovementType,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listStockMovements = `-- name: ListStockMovements :many
 SELECT id, product_id, from_location_id, to_location_id, quantity, movement_type, created_at FROM stock_movements ORDER BY created_at DESC
 `
 
 func (q *Queries) ListStockMovements(ctx context.Context) ([]StockMovement, error) {
 	rows, err := q.db.Query(ctx, listStockMovements)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StockMovement
+	for rows.Next() {
+		var i StockMovement
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProductID,
+			&i.FromLocationID,
+			&i.ToLocationID,
+			&i.Quantity,
+			&i.MovementType,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStockMovementsByLocation = `-- name: ListStockMovementsByLocation :many
+SELECT id, product_id, from_location_id, to_location_id, quantity, movement_type, created_at FROM stock_movements WHERE from_location_id = $1 OR to_location_id = $1 ORDER BY created_at DESC
+`
+
+func (q *Queries) ListStockMovementsByLocation(ctx context.Context, fromLocationID pgtype.Int4) ([]StockMovement, error) {
+	rows, err := q.db.Query(ctx, listStockMovementsByLocation, fromLocationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StockMovement
+	for rows.Next() {
+		var i StockMovement
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProductID,
+			&i.FromLocationID,
+			&i.ToLocationID,
+			&i.Quantity,
+			&i.MovementType,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStockMovementsByProduct = `-- name: ListStockMovementsByProduct :many
+SELECT id, product_id, from_location_id, to_location_id, quantity, movement_type, created_at FROM stock_movements WHERE product_id = $1 ORDER BY created_at DESC
+`
+
+func (q *Queries) ListStockMovementsByProduct(ctx context.Context, productID int32) ([]StockMovement, error) {
+	rows, err := q.db.Query(ctx, listStockMovementsByProduct, productID)
 	if err != nil {
 		return nil, err
 	}

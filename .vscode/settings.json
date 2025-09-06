@@ -1,5 +1,6 @@
 {
     "go.toolsEnvVars": {
         "GOEXPERIMENT": "jsonv2"
-    }
+    },
+    "makefile.configureOnOpen": false
 }

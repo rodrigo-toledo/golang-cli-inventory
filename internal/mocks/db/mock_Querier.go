@@ -1074,142 +1074,6 @@ func (_c *MockQuerier_GetStockByProductAndLocation_Call) RunAndReturn(run func(c
 	return _c
 }
 
-// GetStockMovementsByLocation provides a mock function for the type MockQuerier
-func (_mock *MockQuerier) GetStockMovementsByLocation(ctx context.Context, fromLocationID pgtype.Int4) ([]db.StockMovement, error) {
-	ret := _mock.Called(ctx, fromLocationID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetStockMovementsByLocation")
-	}
-
-	var r0 []db.StockMovement
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, pgtype.Int4) ([]db.StockMovement, error)); ok {
-		return returnFunc(ctx, fromLocationID)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, pgtype.Int4) []db.StockMovement); ok {
-		r0 = returnFunc(ctx, fromLocationID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]db.StockMovement)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, pgtype.Int4) error); ok {
-		r1 = returnFunc(ctx, fromLocationID)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockQuerier_GetStockMovementsByLocation_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStockMovementsByLocation'
-type MockQuerier_GetStockMovementsByLocation_Call struct {
-	*mock.Call
-}
-
-// GetStockMovementsByLocation is a helper method to define mock.On call
-//   - ctx context.Context
-//   - fromLocationID pgtype.Int4
-func (_e *MockQuerier_Expecter) GetStockMovementsByLocation(ctx interface{}, fromLocationID interface{}) *MockQuerier_GetStockMovementsByLocation_Call {
-	return &MockQuerier_GetStockMovementsByLocation_Call{Call: _e.mock.On("GetStockMovementsByLocation", ctx, fromLocationID)}
-}
-
-func (_c *MockQuerier_GetStockMovementsByLocation_Call) Run(run func(ctx context.Context, fromLocationID pgtype.Int4)) *MockQuerier_GetStockMovementsByLocation_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 pgtype.Int4
-		if args[1] != nil {
-			arg1 = args[1].(pgtype.Int4)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockQuerier_GetStockMovementsByLocation_Call) Return(stockMovements []db.StockMovement, err error) *MockQuerier_GetStockMovementsByLocation_Call {
-	_c.Call.Return(stockMovements, err)
-	return _c
-}
-
-func (_c *MockQuerier_GetStockMovementsByLocation_Call) RunAndReturn(run func(ctx context.Context, fromLocationID pgtype.Int4) ([]db.StockMovement, error)) *MockQuerier_GetStockMovementsByLocation_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetStockMovementsByProduct provides a mock function for the type MockQuerier
-func (_mock *MockQuerier) GetStockMovementsByProduct(ctx context.Context, productID int32) ([]db.StockMovement, error) {
-	ret := _mock.Called(ctx, productID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetStockMovementsByProduct")
-	}
-
-	var r0 []db.StockMovement
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int32) ([]db.StockMovement, error)); ok {
-		return returnFunc(ctx, productID)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int32) []db.StockMovement); ok {
-		r0 = returnFunc(ctx, productID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]db.StockMovement)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, int32) error); ok {
-		r1 = returnFunc(ctx, productID)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockQuerier_GetStockMovementsByProduct_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStockMovementsByProduct'
-type MockQuerier_GetStockMovementsByProduct_Call struct {
-	*mock.Call
-}
-
-// GetStockMovementsByProduct is a helper method to define mock.On call
-//   - ctx context.Context
-//   - productID int32
-func (_e *MockQuerier_Expecter) GetStockMovementsByProduct(ctx interface{}, productID interface{}) *MockQuerier_GetStockMovementsByProduct_Call {
-	return &MockQuerier_GetStockMovementsByProduct_Call{Call: _e.mock.On("GetStockMovementsByProduct", ctx, productID)}
-}
-
-func (_c *MockQuerier_GetStockMovementsByProduct_Call) Run(run func(ctx context.Context, productID int32)) *MockQuerier_GetStockMovementsByProduct_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 int32
-		if args[1] != nil {
-			arg1 = args[1].(int32)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockQuerier_GetStockMovementsByProduct_Call) Return(stockMovements []db.StockMovement, err error) *MockQuerier_GetStockMovementsByProduct_Call {
-	_c.Call.Return(stockMovements, err)
-	return _c
-}
-
-func (_c *MockQuerier_GetStockMovementsByProduct_Call) RunAndReturn(run func(ctx context.Context, productID int32) ([]db.StockMovement, error)) *MockQuerier_GetStockMovementsByProduct_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // ListLocations provides a mock function for the type MockQuerier
 func (_mock *MockQuerier) ListLocations(ctx context.Context) ([]db.Location, error) {
 	ret := _mock.Called(ctx)
@@ -1392,6 +1256,142 @@ func (_c *MockQuerier_ListStockMovements_Call) Return(stockMovements []db.StockM
 }
 
 func (_c *MockQuerier_ListStockMovements_Call) RunAndReturn(run func(ctx context.Context) ([]db.StockMovement, error)) *MockQuerier_ListStockMovements_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListStockMovementsByLocation provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) ListStockMovementsByLocation(ctx context.Context, fromLocationID pgtype.Int4) ([]db.StockMovement, error) {
+	ret := _mock.Called(ctx, fromLocationID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListStockMovementsByLocation")
+	}
+
+	var r0 []db.StockMovement
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, pgtype.Int4) ([]db.StockMovement, error)); ok {
+		return returnFunc(ctx, fromLocationID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, pgtype.Int4) []db.StockMovement); ok {
+		r0 = returnFunc(ctx, fromLocationID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]db.StockMovement)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, pgtype.Int4) error); ok {
+		r1 = returnFunc(ctx, fromLocationID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_ListStockMovementsByLocation_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListStockMovementsByLocation'
+type MockQuerier_ListStockMovementsByLocation_Call struct {
+	*mock.Call
+}
+
+// ListStockMovementsByLocation is a helper method to define mock.On call
+//   - ctx context.Context
+//   - fromLocationID pgtype.Int4
+func (_e *MockQuerier_Expecter) ListStockMovementsByLocation(ctx interface{}, fromLocationID interface{}) *MockQuerier_ListStockMovementsByLocation_Call {
+	return &MockQuerier_ListStockMovementsByLocation_Call{Call: _e.mock.On("ListStockMovementsByLocation", ctx, fromLocationID)}
+}
+
+func (_c *MockQuerier_ListStockMovementsByLocation_Call) Run(run func(ctx context.Context, fromLocationID pgtype.Int4)) *MockQuerier_ListStockMovementsByLocation_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 pgtype.Int4
+		if args[1] != nil {
+			arg1 = args[1].(pgtype.Int4)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListStockMovementsByLocation_Call) Return(stockMovements []db.StockMovement, err error) *MockQuerier_ListStockMovementsByLocation_Call {
+	_c.Call.Return(stockMovements, err)
+	return _c
+}
+
+func (_c *MockQuerier_ListStockMovementsByLocation_Call) RunAndReturn(run func(ctx context.Context, fromLocationID pgtype.Int4) ([]db.StockMovement, error)) *MockQuerier_ListStockMovementsByLocation_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListStockMovementsByProduct provides a mock function for the type MockQuerier
+func (_mock *MockQuerier) ListStockMovementsByProduct(ctx context.Context, productID int32) ([]db.StockMovement, error) {
+	ret := _mock.Called(ctx, productID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListStockMovementsByProduct")
+	}
+
+	var r0 []db.StockMovement
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int32) ([]db.StockMovement, error)); ok {
+		return returnFunc(ctx, productID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int32) []db.StockMovement); ok {
+		r0 = returnFunc(ctx, productID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]db.StockMovement)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int32) error); ok {
+		r1 = returnFunc(ctx, productID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockQuerier_ListStockMovementsByProduct_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListStockMovementsByProduct'
+type MockQuerier_ListStockMovementsByProduct_Call struct {
+	*mock.Call
+}
+
+// ListStockMovementsByProduct is a helper method to define mock.On call
+//   - ctx context.Context
+//   - productID int32
+func (_e *MockQuerier_Expecter) ListStockMovementsByProduct(ctx interface{}, productID interface{}) *MockQuerier_ListStockMovementsByProduct_Call {
+	return &MockQuerier_ListStockMovementsByProduct_Call{Call: _e.mock.On("ListStockMovementsByProduct", ctx, productID)}
+}
+
+func (_c *MockQuerier_ListStockMovementsByProduct_Call) Run(run func(ctx context.Context, productID int32)) *MockQuerier_ListStockMovementsByProduct_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int32
+		if args[1] != nil {
+			arg1 = args[1].(int32)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockQuerier_ListStockMovementsByProduct_Call) Return(stockMovements []db.StockMovement, err error) *MockQuerier_ListStockMovementsByProduct_Call {
+	_c.Call.Return(stockMovements, err)
+	return _c
+}
+
+func (_c *MockQuerier_ListStockMovementsByProduct_Call) RunAndReturn(run func(ctx context.Context, productID int32) ([]db.StockMovement, error)) *MockQuerier_ListStockMovementsByProduct_Call {
 	_c.Call.Return(run)
 	return _c
 }

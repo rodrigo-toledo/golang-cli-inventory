@@ -39,7 +39,7 @@ func (_m *MockStockMovementRepositoryInterface) EXPECT() *MockStockMovementRepos
 }
 
 // Create provides a mock function for the type MockStockMovementRepositoryInterface
-func (_mock *MockStockMovementRepositoryInterface) Create(ctx context.Context, movement *models.StockMovement) (*models.StockMovement, error) {
+func (_mock *MockStockMovementRepositoryInterface) Create(ctx context.Context, movement *models.CreateStockMovementRequest) (*models.StockMovement, error) {
 	ret := _mock.Called(ctx, movement)
 
 	if len(ret) == 0 {
@@ -48,17 +48,17 @@ func (_mock *MockStockMovementRepositoryInterface) Create(ctx context.Context, m
 
 	var r0 *models.StockMovement
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *models.StockMovement) (*models.StockMovement, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *models.CreateStockMovementRequest) (*models.StockMovement, error)); ok {
 		return returnFunc(ctx, movement)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *models.StockMovement) *models.StockMovement); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *models.CreateStockMovementRequest) *models.StockMovement); ok {
 		r0 = returnFunc(ctx, movement)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*models.StockMovement)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *models.StockMovement) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *models.CreateStockMovementRequest) error); ok {
 		r1 = returnFunc(ctx, movement)
 	} else {
 		r1 = ret.Error(1)
@@ -73,20 +73,20 @@ type MockStockMovementRepositoryInterface_Create_Call struct {
 
 // Create is a helper method to define mock.On call
 //   - ctx context.Context
-//   - movement *models.StockMovement
+//   - movement *models.CreateStockMovementRequest
 func (_e *MockStockMovementRepositoryInterface_Expecter) Create(ctx interface{}, movement interface{}) *MockStockMovementRepositoryInterface_Create_Call {
 	return &MockStockMovementRepositoryInterface_Create_Call{Call: _e.mock.On("Create", ctx, movement)}
 }
 
-func (_c *MockStockMovementRepositoryInterface_Create_Call) Run(run func(ctx context.Context, movement *models.StockMovement)) *MockStockMovementRepositoryInterface_Create_Call {
+func (_c *MockStockMovementRepositoryInterface_Create_Call) Run(run func(ctx context.Context, movement *models.CreateStockMovementRequest)) *MockStockMovementRepositoryInterface_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *models.StockMovement
+		var arg1 *models.CreateStockMovementRequest
 		if args[1] != nil {
-			arg1 = args[1].(*models.StockMovement)
+			arg1 = args[1].(*models.CreateStockMovementRequest)
 		}
 		run(
 			arg0,
@@ -101,7 +101,75 @@ func (_c *MockStockMovementRepositoryInterface_Create_Call) Return(stockMovement
 	return _c
 }
 
-func (_c *MockStockMovementRepositoryInterface_Create_Call) RunAndReturn(run func(ctx context.Context, movement *models.StockMovement) (*models.StockMovement, error)) *MockStockMovementRepositoryInterface_Create_Call {
+func (_c *MockStockMovementRepositoryInterface_Create_Call) RunAndReturn(run func(ctx context.Context, movement *models.CreateStockMovementRequest) (*models.StockMovement, error)) *MockStockMovementRepositoryInterface_Create_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListByProductID provides a mock function for the type MockStockMovementRepositoryInterface
+func (_mock *MockStockMovementRepositoryInterface) ListByProductID(ctx context.Context, productID int) ([]models.StockMovement, error) {
+	ret := _mock.Called(ctx, productID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListByProductID")
+	}
+
+	var r0 []models.StockMovement
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int) ([]models.StockMovement, error)); ok {
+		return returnFunc(ctx, productID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int) []models.StockMovement); ok {
+		r0 = returnFunc(ctx, productID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.StockMovement)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int) error); ok {
+		r1 = returnFunc(ctx, productID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockStockMovementRepositoryInterface_ListByProductID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListByProductID'
+type MockStockMovementRepositoryInterface_ListByProductID_Call struct {
+	*mock.Call
+}
+
+// ListByProductID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - productID int
+func (_e *MockStockMovementRepositoryInterface_Expecter) ListByProductID(ctx interface{}, productID interface{}) *MockStockMovementRepositoryInterface_ListByProductID_Call {
+	return &MockStockMovementRepositoryInterface_ListByProductID_Call{Call: _e.mock.On("ListByProductID", ctx, productID)}
+}
+
+func (_c *MockStockMovementRepositoryInterface_ListByProductID_Call) Run(run func(ctx context.Context, productID int)) *MockStockMovementRepositoryInterface_ListByProductID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int
+		if args[1] != nil {
+			arg1 = args[1].(int)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockStockMovementRepositoryInterface_ListByProductID_Call) Return(stockMovements []models.StockMovement, err error) *MockStockMovementRepositoryInterface_ListByProductID_Call {
+	_c.Call.Return(stockMovements, err)
+	return _c
+}
+
+func (_c *MockStockMovementRepositoryInterface_ListByProductID_Call) RunAndReturn(run func(ctx context.Context, productID int) ([]models.StockMovement, error)) *MockStockMovementRepositoryInterface_ListByProductID_Call {
 	_c.Call.Return(run)
 	return _c
 }

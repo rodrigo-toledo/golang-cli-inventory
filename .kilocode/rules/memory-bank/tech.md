@@ -29,3 +29,4 @@ The following commands are available via the `Makefile`:
 - `make unit-test`: Runs only the fast unit tests.
 - `make integration-test`: Runs the slower integration tests that require a Docker environment.
 - `make clean`: Removes all generated files (database code, binaries, coverage reports).
+- `make mocks`: Regenerates mocks for all repository and service interfaces.

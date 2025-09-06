@@ -39,7 +39,8 @@ type StockRepositoryInterface interface {
 // StockMovementRepositoryInterface defines the contract for stock movement data access operations.
 // It specifies the methods that any stock movement repository implementation must provide.
 type StockMovementRepositoryInterface interface {
-	Create(ctx context.Context, movement *models.StockMovement) (*models.StockMovement, error)
+	Create(ctx context.Context, movement *models.CreateStockMovementRequest) (*models.StockMovement, error)
+	ListByProductID(ctx context.Context, productID int) ([]models.StockMovement, error)
 }
 
 // ProductServiceInterface defines the contract for product business logic operations.

@@ -63,11 +63,10 @@ func (s *StockService) AddStock(ctx context.Context, req *models.AddStockRequest
 	}
 
 	// Record the movement
-	movement := &models.StockMovement{
-		ProductID:    req.ProductID,
-		ToLocationID: &req.LocationID,
-		Quantity:     req.Quantity,
-		MovementType: "ADD",
+	movement := &models.CreateStockMovementRequest{
+		ProductID:      req.ProductID,
+		DestLocationID: req.LocationID,
+		Quantity:       req.Quantity,
 	}
 	_, err = s.movementRepo.Create(ctx, movement)
 	if err != nil {
@@ -131,12 +130,11 @@ func (s *StockService) MoveStock(ctx context.Context, req *models.MoveStockReque
 		}
 
 		// Record the movement
-		movement := &models.StockMovement{
-			ProductID:      req.ProductID,
-			FromLocationID: &req.FromLocationID,
-			ToLocationID:   &req.ToLocationID,
-			Quantity:       req.Quantity,
-			MovementType:   "MOVE",
+		movement := &models.CreateStockMovementRequest{
+			ProductID:        req.ProductID,
+			SourceLocationID: req.FromLocationID,
+			DestLocationID:   req.ToLocationID,
+			Quantity:         req.Quantity,
 		}
 		_, err = s.movementRepo.Create(ctx, movement)
 		if err != nil {
@@ -167,12 +165,11 @@ func (s *StockService) MoveStock(ctx context.Context, req *models.MoveStockReque
 	}
 
 	// Record the movement
-	movement := &models.StockMovement{
-		ProductID:      req.ProductID,
-		FromLocationID: &req.FromLocationID,
-		ToLocationID:   &req.ToLocationID,
-		Quantity:       req.Quantity,
-		MovementType:   "MOVE",
+	movement := &models.CreateStockMovementRequest{
+		ProductID:        req.ProductID,
+		SourceLocationID: req.FromLocationID,
+		DestLocationID:   req.ToLocationID,
+		Quantity:         req.Quantity,
 	}
 	_, err = s.movementRepo.Create(ctx, movement)
 	if err != nil {

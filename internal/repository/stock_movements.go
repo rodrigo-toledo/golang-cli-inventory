@@ -26,20 +26,11 @@ func NewStockMovementRepository(queries *db.Queries) *StockMovementRepository {
 	}
 }
 
-func (r *StockMovementRepository) Create(ctx context.Context, movement *models.StockMovement) (*models.StockMovement, error) {
-	// Handle nullable fields
-	var fromLocationID, toLocationID pgtype.Int4
-	if movement.FromLocationID != nil {
-		fromLocationID = pgtype.Int4{Int32: int32(*movement.FromLocationID), Valid: true}
-	}
-	if movement.ToLocationID != nil {
-		toLocationID = pgtype.Int4{Int32: int32(*movement.ToLocationID), Valid: true}
-	}
-
+func (r *StockMovementRepository) Create(ctx context.Context, movement *models.CreateStockMovementRequest) (*models.StockMovement, error) {
 	params := db.CreateStockMovementParams{
 		ProductID:      int32(movement.ProductID),
-		FromLocationID: fromLocationID,
-		ToLocationID:   toLocationID,
+		FromLocationID: pgtype.Int4{Int32: int32(movement.SourceLocationID), Valid: movement.SourceLocationID != 0},
+		ToLocationID:   pgtype.Int4{Int32: int32(movement.DestLocationID), Valid: movement.DestLocationID != 0},
 		Quantity:       int32(movement.Quantity),
 		MovementType:   movement.MovementType,
 	}
@@ -49,52 +40,49 @@ func (r *StockMovementRepository) Create(ctx context.Context, movement *models.S
 		return nil, fmt.Errorf("failed to create stock movement: %w", err)
 	}
 
-	// Convert pgtype.Int4 to *int
-	var fromLoc, toLoc *int
+	var fromLocID, toLocID *int
 	if dbMovement.FromLocationID.Valid {
-		val := int(dbMovement.FromLocationID.Int32)
-		fromLoc = &val
+		id := int(dbMovement.FromLocationID.Int32)
+		fromLocID = &id
 	}
 	if dbMovement.ToLocationID.Valid {
-		val := int(dbMovement.ToLocationID.Int32)
-		toLoc = &val
+		id := int(dbMovement.ToLocationID.Int32)
+		toLocID = &id
 	}
 
 	return &models.StockMovement{
 		ID:             int(dbMovement.ID),
 		ProductID:      int(dbMovement.ProductID),
-		FromLocationID: fromLoc,
-		ToLocationID:   toLoc,
+		FromLocationID: fromLocID,
+		ToLocationID:   toLocID,
 		Quantity:       int(dbMovement.Quantity),
 		MovementType:   dbMovement.MovementType,
 		CreatedAt:      dbMovement.CreatedAt.Time,
 	}, nil
 }
 
-func (r *StockMovementRepository) List(ctx context.Context) ([]models.StockMovement, error) {
-	dbMovements, err := r.queries.ListStockMovements(ctx)
+func (r *StockMovementRepository) ListByProductID(ctx context.Context, productID int) ([]models.StockMovement, error) {
+	dbMovements, err := r.queries.ListStockMovementsByProduct(ctx, int32(productID))
 	if err != nil {
-		return nil, fmt.Errorf("failed to list stock movements: %w", err)
+		return nil, fmt.Errorf("failed to list stock movements by product id: %w", err)
 	}
 
 	movements := make([]models.StockMovement, len(dbMovements))
 	for i, dbMovement := range dbMovements {
-		// Convert pgtype.Int4 to *int
-		var fromLoc, toLoc *int
+		var fromLocID, toLocID *int
 		if dbMovement.FromLocationID.Valid {
-			val := int(dbMovement.FromLocationID.Int32)
-			fromLoc = &val
+			id := int(dbMovement.FromLocationID.Int32)
+			fromLocID = &id
 		}
 		if dbMovement.ToLocationID.Valid {
-			val := int(dbMovement.ToLocationID.Int32)
-			toLoc = &val
+			id := int(dbMovement.ToLocationID.Int32)
+			toLocID = &id
 		}
-
 		movements[i] = models.StockMovement{
 			ID:             int(dbMovement.ID),
 			ProductID:      int(dbMovement.ProductID),
-			FromLocationID: fromLoc,
-			ToLocationID:   toLoc,
+			FromLocationID: fromLocID,
+			ToLocationID:   toLocID,
 			Quantity:       int(dbMovement.Quantity),
 			MovementType:   dbMovement.MovementType,
 			CreatedAt:      dbMovement.CreatedAt.Time,

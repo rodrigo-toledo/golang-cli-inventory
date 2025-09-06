@@ -88,3 +88,7 @@ func (r *LocationRepository) List(ctx context.Context) ([]models.Location, error
 
 	return locations, nil
 }
+
+func (r *LocationRepository) Delete(ctx context.Context, id int) error {
+	return r.queries.DeleteLocation(ctx, int32(id))
+}

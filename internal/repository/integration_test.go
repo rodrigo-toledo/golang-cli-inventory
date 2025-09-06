@@ -15,6 +15,130 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestLocationRepository_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test")
+	}
+
+	// Setup test database
+	db := testutils.SetupTestDatabase(t)
+	defer testutils.TeardownTestDatabase(t)
+
+	// Create queries instance
+	queries := testutils.GetTestQueries(db)
+	repo := NewLocationRepository(queries)
+
+	ctx := context.Background()
+
+	t.Run("Create and Get Location", func(t *testing.T) {
+		testutils.CleanupTestDatabase(t, db)
+
+		// Create a location
+		createReq := &models.CreateLocationRequest{
+			Name: "Test Warehouse",
+		}
+
+		created, err := repo.Create(ctx, createReq)
+		require.NoError(t, err)
+		assert.NotZero(t, created.ID)
+		assert.Equal(t, createReq.Name, created.Name)
+		assert.NotZero(t, created.CreatedAt)
+
+		// Retrieve the location by name
+		retrieved, err := repo.GetByName(ctx, createReq.Name)
+		require.NoError(t, err)
+		assert.Equal(t, created.ID, retrieved.ID)
+		assert.Equal(t, created.Name, retrieved.Name)
+
+		// Retrieve the location by ID
+		retrievedByID, err := repo.GetByID(ctx, created.ID)
+		require.NoError(t, err)
+		assert.Equal(t, created.ID, retrievedByID.ID)
+		assert.Equal(t, created.Name, retrievedByID.Name)
+	})
+
+	t.Run("Get Non-Existent Location", func(t *testing.T) {
+		testutils.CleanupTestDatabase(t, db)
+
+		// Try to get a location that doesn't exist
+		location, err := repo.GetByName(ctx, "NONEXISTENT")
+		require.NoError(t, err)
+		assert.Nil(t, location)
+
+		location, err = repo.GetByID(ctx, 99999)
+		require.NoError(t, err)
+		assert.Nil(t, location)
+	})
+
+	t.Run("Create Duplicate Name", func(t *testing.T) {
+		testutils.CleanupTestDatabase(t, db)
+
+		// Use a unique name for each test run
+		createReq := &models.CreateLocationRequest{
+			Name: fmt.Sprintf("Duplicate Location %d", time.Now().UnixNano()),
+		}
+
+		// Create first location
+		_, err := repo.Create(ctx, createReq)
+		require.NoError(t, err)
+
+		// Try to create location with same name
+		_, err = repo.Create(ctx, createReq)
+		assert.Error(t, err)
+	})
+
+	t.Run("List Locations", func(t *testing.T) {
+		testutils.CleanupTestDatabase(t, db)
+
+		// Create multiple locations
+		locations := []*models.CreateLocationRequest{
+			{Name: "Warehouse A"},
+			{Name: "Warehouse B"},
+			{Name: "Store Main"},
+		}
+
+		for _, l := range locations {
+			_, err := repo.Create(ctx, l)
+			require.NoError(t, err)
+		}
+
+		// List all locations
+		retrieved, err := repo.List(ctx)
+		require.NoError(t, err)
+		assert.Len(t, retrieved, 3)
+
+		// Verify all locations are present
+		names := make(map[string]bool)
+		for _, l := range retrieved {
+			names[l.Name] = true
+		}
+
+		for _, l := range locations {
+			assert.True(t, names[l.Name], "Location with name %s should be in the list", l.Name)
+		}
+	})
+
+	t.Run("Delete Location", func(t *testing.T) {
+		testutils.CleanupTestDatabase(t, db)
+
+		// Create a location to be deleted
+		createReq := &models.CreateLocationRequest{
+			Name: "Location to Delete",
+		}
+		created, err := repo.Create(ctx, createReq)
+		require.NoError(t, err)
+
+		// Delete the location
+		err = repo.Delete(ctx, created.ID)
+		require.NoError(t, err)
+
+		// Verify it's gone
+		retrieved, err := repo.GetByID(ctx, created.ID)
+		require.NoError(t, err)
+		assert.Nil(t, retrieved)
+	})
+}
+
 func TestProductRepository_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test")
@@ -145,109 +269,27 @@ func TestProductRepository_Integration(t *testing.T) {
 			assert.True(t, skus[p.SKU], "Product with SKU %s should be in the list", p.SKU)
 		}
 	})
-}
 
-func TestLocationRepository_Integration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test")
-	}
-
-	// Setup test database
-	db := testutils.SetupTestDatabase(t)
-	defer testutils.TeardownTestDatabase(t)
-
-	// Create queries instance
-	queries := testutils.GetTestQueries(db)
-	repo := NewLocationRepository(queries)
-
-	ctx := context.Background()
-
-	t.Run("Create and Get Location", func(t *testing.T) {
+	t.Run("Delete Product", func(t *testing.T) {
 		testutils.CleanupTestDatabase(t, db)
 
-		// Create a location
-		createReq := &models.CreateLocationRequest{
-			Name: "Test Warehouse",
+		// Create a product to be deleted
+		createReq := &models.CreateProductRequest{
+			SKU:   "DELETE001",
+			Name:  "Product to Delete",
+			Price: 1.00,
 		}
-
 		created, err := repo.Create(ctx, createReq)
 		require.NoError(t, err)
-		assert.NotZero(t, created.ID)
-		assert.Equal(t, createReq.Name, created.Name)
-		assert.NotZero(t, created.CreatedAt)
 
-		// Retrieve the location by name
-		retrieved, err := repo.GetByName(ctx, createReq.Name)
-		require.NoError(t, err)
-		assert.Equal(t, created.ID, retrieved.ID)
-		assert.Equal(t, created.Name, retrieved.Name)
-
-		// Retrieve the location by ID
-		retrievedByID, err := repo.GetByID(ctx, created.ID)
-		require.NoError(t, err)
-		assert.Equal(t, created.ID, retrievedByID.ID)
-		assert.Equal(t, created.Name, retrievedByID.Name)
-	})
-
-	t.Run("Get Non-Existent Location", func(t *testing.T) {
-		testutils.CleanupTestDatabase(t, db)
-
-		// Try to get a location that doesn't exist
-		location, err := repo.GetByName(ctx, "NONEXISTENT")
-		require.NoError(t, err)
-		assert.Nil(t, location)
-
-		location, err = repo.GetByID(ctx, 99999)
-		require.NoError(t, err)
-		assert.Nil(t, location)
-	})
-
-	t.Run("Create Duplicate Name", func(t *testing.T) {
-		testutils.CleanupTestDatabase(t, db)
-
-		// Use a unique name for each test run
-		createReq := &models.CreateLocationRequest{
-			Name: fmt.Sprintf("Duplicate Location %d", time.Now().UnixNano()),
-		}
-
-		// Create first location
-		_, err := repo.Create(ctx, createReq)
+		// Delete the product
+		err = repo.Delete(ctx, created.ID)
 		require.NoError(t, err)
 
-		// Try to create location with same name
-		_, err = repo.Create(ctx, createReq)
-		assert.Error(t, err)
-	})
-
-	t.Run("List Locations", func(t *testing.T) {
-		testutils.CleanupTestDatabase(t, db)
-
-		// Create multiple locations
-		locations := []*models.CreateLocationRequest{
-			{Name: "Warehouse A"},
-			{Name: "Warehouse B"},
-			{Name: "Store Main"},
-		}
-
-		for _, l := range locations {
-			_, err := repo.Create(ctx, l)
-			require.NoError(t, err)
-		}
-
-		// List all locations
-		retrieved, err := repo.List(ctx)
+		// Verify it's gone
+		retrieved, err := repo.GetByID(ctx, created.ID)
 		require.NoError(t, err)
-		assert.Len(t, retrieved, 3)
-
-		// Verify all locations are present
-		names := make(map[string]bool)
-		for _, l := range retrieved {
-			names[l.Name] = true
-		}
-
-		for _, l := range locations {
-			assert.True(t, names[l.Name], "Location with name %s should be in the list", l.Name)
-		}
+		assert.Nil(t, retrieved)
 	})
 }
 
@@ -446,5 +488,73 @@ func TestStockRepository_Integration(t *testing.T) {
 
 		assert.Equal(t, 5, stockMap[[2]int{createdProducts[0].ID, createdLocations[0].ID}])
 		assert.Equal(t, 8, stockMap[[2]int{createdProducts[1].ID, createdLocations[0].ID}])
+	})
+}
+
+func TestStockMovementRepository_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test")
+	}
+
+	// Setup test database
+	db := testutils.SetupTestDatabase(t)
+	defer testutils.TeardownTestDatabase(t)
+
+	// Create queries instance
+	queries := testutils.GetTestQueries(db)
+	productRepo := NewProductRepository(queries)
+	locationRepo := NewLocationRepository(queries)
+	stockRepo := NewStockRepository(queries)
+	stockMovementRepo := NewStockMovementRepository(queries)
+
+	ctx := context.Background()
+
+	t.Run("Create and List Stock Movements", func(t *testing.T) {
+		testutils.CleanupTestDatabase(t, db)
+
+		// 1. Setup: Create product, source, and destination locations
+		product, err := productRepo.Create(ctx, &models.CreateProductRequest{
+			SKU:  "MV-PROD-01",
+			Name: "Movement Product",
+		})
+		require.NoError(t, err)
+
+		source, err := locationRepo.Create(ctx, &models.CreateLocationRequest{
+			Name: "Source Warehouse",
+		})
+		require.NoError(t, err)
+
+		destination, err := locationRepo.Create(ctx, &models.CreateLocationRequest{
+			Name: "Destination Store",
+		})
+		require.NoError(t, err)
+
+		// 2. Add initial stock to the source location
+		_, err = stockRepo.AddStock(ctx, product.ID, source.ID, 100)
+		require.NoError(t, err)
+
+		// 3. Create a stock movement
+		movement, err := stockMovementRepo.Create(ctx, &models.CreateStockMovementRequest{
+			ProductID:        product.ID,
+			SourceLocationID: source.ID,
+			DestLocationID:   destination.ID,
+			Quantity:         25,
+			MovementType:     "transfer",
+		})
+		require.NoError(t, err)
+
+		// 4. Verify the created movement is recorded correctly
+		assert.NotZero(t, movement.ID)
+		assert.Equal(t, product.ID, movement.ProductID)
+		assert.Equal(t, source.ID, *movement.FromLocationID)
+		assert.Equal(t, destination.ID, *movement.ToLocationID)
+		assert.Equal(t, 25, movement.Quantity)
+
+		// 5. List all movements for the product
+		movements, err := stockMovementRepo.ListByProductID(ctx, product.ID)
+		require.NoError(t, err)
+		require.Len(t, movements, 1, "Should be one movement for this product")
+		assert.Equal(t, movement.ID, movements[0].ID)
+		assert.Equal(t, movement.Quantity, movements[0].Quantity)
 	})
 }

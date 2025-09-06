@@ -90,3 +90,7 @@ func (r *ProductRepository) List(ctx context.Context) ([]models.Product, error) 
 
 	return products, nil
 }
+
+func (r *ProductRepository) Delete(ctx context.Context, id int) error {
+	return r.queries.DeleteProduct(ctx, int32(id))
+}

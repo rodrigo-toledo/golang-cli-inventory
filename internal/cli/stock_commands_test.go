@@ -46,7 +46,7 @@ func TestAddStockCmd(t *testing.T) {
 		mockProductRepo.EXPECT().GetByID(mock.Anything, 1).Return(&models.Product{}, nil)
 		mockLocationRepo.EXPECT().GetByID(mock.Anything, 1).Return(&models.Location{}, nil)
 		mockStockRepo.EXPECT().AddStock(mock.Anything, 1, 1, 100).Return(expectedStock, nil)
-		mockMovementRepo.EXPECT().Create(mock.Anything, mock.AnythingOfType("*models.StockMovement")).Return(&models.StockMovement{}, nil)
+		mockMovementRepo.EXPECT().Create(mock.Anything, mock.AnythingOfType("*models.CreateStockMovementRequest")).Return(&models.StockMovement{}, nil)
 
 		// Create a test command with the same Run function as the original
 		testCmd := &cobra.Command{
@@ -157,7 +157,7 @@ func TestMoveStockCmd(t *testing.T) {
 		mockStockRepo.EXPECT().GetByProductAndLocation(mock.Anything, 1, 1).Return(&models.Stock{Quantity: 100}, nil)
 		mockStockRepo.EXPECT().RemoveStock(mock.Anything, 1, 1, 25).Return(&models.Stock{}, nil)
 		mockStockRepo.EXPECT().AddStock(mock.Anything, 1, 2, 25).Return(expectedStock, nil)
-		mockMovementRepo.EXPECT().Create(mock.Anything, mock.AnythingOfType("*models.StockMovement")).Return(&models.StockMovement{}, nil)
+		mockMovementRepo.EXPECT().Create(mock.Anything, mock.AnythingOfType("*models.CreateStockMovementRequest")).Return(&models.StockMovement{}, nil)
 
 		// Create a test command with the same Run function as the original
 		testCmd := &cobra.Command{

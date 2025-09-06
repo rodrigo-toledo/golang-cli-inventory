@@ -38,6 +38,14 @@ type AddStockRequest struct {
 	Quantity   int `json:"quantity" validate:"required,min=1"`
 }
 
+type CreateStockMovementRequest struct {
+	ProductID        int    `json:"product_id" validate:"required"`
+	SourceLocationID int    `json:"source_location_id" validate:"required"`
+	DestLocationID   int    `json:"dest_location_id" validate:"required"`
+	Quantity         int    `json:"quantity" validate:"required,min=1"`
+	MovementType     string `json:"movement_type" validate:"required"`
+}
+
 // MoveStockRequest represents the data needed to move stock between locations.
 // It contains the product ID, source location ID, destination location ID, and quantity to move.
 type MoveStockRequest struct {

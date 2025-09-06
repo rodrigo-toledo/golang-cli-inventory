@@ -142,10 +142,27 @@ type MockStockMovementRepositoryImpl struct {
 	movements []models.StockMovement
 }
 
-func (m *MockStockMovementRepositoryImpl) Create(ctx context.Context, movement *models.StockMovement) (*models.StockMovement, error) {
-	movement.ID = len(m.movements) + 1
-	m.movements = append(m.movements, *movement)
-	return movement, nil
+func (m *MockStockMovementRepositoryImpl) Create(ctx context.Context, movement *models.CreateStockMovementRequest) (*models.StockMovement, error) {
+	newMovement := &models.StockMovement{
+		ID:             len(m.movements) + 1,
+		ProductID:      movement.ProductID,
+		FromLocationID: &movement.SourceLocationID,
+		ToLocationID:   &movement.DestLocationID,
+		Quantity:       movement.Quantity,
+		MovementType:   "transfer",
+	}
+	m.movements = append(m.movements, *newMovement)
+	return newMovement, nil
+}
+
+func (m *MockStockMovementRepositoryImpl) ListByProductID(ctx context.Context, productID int) ([]models.StockMovement, error) {
+	var productMovements []models.StockMovement
+	for _, movement := range m.movements {
+		if movement.ProductID == productID {
+			productMovements = append(productMovements, movement)
+		}
+	}
+	return productMovements, nil
 }
 
 func TestStockService_AddStock(t *testing.T) {
