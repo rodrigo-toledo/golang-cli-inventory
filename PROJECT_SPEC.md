@@ -5,12 +5,11 @@
 ### add-product
 **Purpose**: Add a new product definition to the inventory system.
 
-**Arguments/Flags**:
-- `--name` (required): Product name
-- `--sku` (required): Stock Keeping Unit - unique product identifier
-- `--description` (optional): Product description
-- `--price` (required): Product price
-- `--category` (optional): Product category
+**Arguments (Positional)**:
+1.  `sku` (required): Stock Keeping Unit - unique product identifier.
+2.  `name` (required): Product name.
+3.  `description` (optional): Product description.
+4.  `price` (required): Product price (must be a valid number).
 
 **Expected Success Output**:
 ```
@@ -26,15 +25,14 @@ Product "Product Name" (SKU: ABC123) successfully added with ID: 12345
 ### add-stock
 **Purpose**: Add inventory of an existing product to a specific location.
 
-**Arguments/Flags**:
-- `--sku` (required): Product SKU to add stock for
-- `--quantity` (required): Quantity to add (must be positive integer)
-- `--location` (required): Warehouse/location identifier
-- `--lot-number` (optional): Lot or batch number for tracking
+**Arguments (Positional)**:
+1.  `product-id` (required): The ID of the product to add stock for.
+2.  `location-id` (required): The ID of the location where stock will be added.
+3.  `quantity` (required): The quantity of stock to add (must be a positive integer).
 
 **Expected Success Output**:
 ```
-Successfully added 50 units of product (SKU: ABC123) to location WH-01
+Successfully added 50 units of product (ID: 1) to location (ID: 1)
 ```
 
 **Key Error Scenarios**:
@@ -44,12 +42,10 @@ Successfully added 50 units of product (SKU: ABC123) to location WH-01
 - Insufficient database permissions
 
 ### find-product
-**Purpose**: Search for products by name or SKU.
+**Purpose**: Find a product by its unique SKU.
 
-**Arguments/Flags**:
-- `--name` (optional): Product name or partial name to search for
-- `--sku` (optional): Exact SKU to search for
-- `--category` (optional): Filter by product category
+**Arguments (Positional)**:
+1.  `sku` (required): The exact SKU of the product to find.
 
 **Expected Success Output**:
 ```
@@ -66,16 +62,15 @@ Found 2 product(s):
 ### move-stock
 **Purpose**: Move a specific quantity of a product from one location to another in an atomic transaction.
 
-**Arguments/Flags**:
-- `--sku` (required): Product SKU to move
-- `--quantity` (required): Quantity to move
-- `--from-location` (required): Source location
-- `--to-location` (required): Destination location
+**Arguments (Positional)**:
+1.  `product-id` (required): The ID of the product to move.
+2.  `from-location-id` (required): The ID of the source location.
+3.  `to-location-id` (required): The ID of the destination location.
+4.  `quantity` (required): The quantity of stock to move (must be a positive integer).
 
 **Expected Success Output**:
 ```
-Successfully moved 25 units of product (SKU: ABC123) from WH-01 to WH-02
-Transaction ID: 789bea1b-2c3d-4e5f-6a7b-8c9d0e1f2a3b
+Successfully moved 10 units of product (ID: 1) from location (ID: 1) to location (ID: 2)
 ```
 
 **Key Error Scenarios**:
@@ -87,11 +82,9 @@ Transaction ID: 789bea1b-2c3d-4e5f-6a7b-8c9d0e1f2a3b
 ### generate-report
 **Purpose**: Generate various inventory reports.
 
-**Arguments/Flags**:
-- `--type` (required): Report type (e.g., "low-stock", "inventory-summary")
-- `--threshold` (optional): Minimum stock threshold (used with low-stock report)
-- `--location` (optional): Filter report by specific location
-- `--output` (optional): Output file path (default: stdout)
+**Arguments (Positional)**:
+1.  `report-type` (required): The type of report to generate. Currently supports "low-stock".
+2.  `threshold` (optional): The minimum stock threshold for the "low-stock" report. Defaults to 10 if not provided.
 
 **Expected Success Output**:
 ```
@@ -109,58 +102,45 @@ Generated: 2025-08-01 23:56:00
 
 ## 2. Database Schema
 
+The following schema represents the current state of the database as defined in the initial migration file (`migrations/000001_create_tables.up.sql`).
+
 ```sql
--- Products table for product definitions
+CREATE TABLE locations (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 CREATE TABLE products (
     id SERIAL PRIMARY KEY,
     sku VARCHAR(50) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    price DECIMAL(10, 2) NOT NULL,
-    category VARCHAR(100),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    price DECIMAL(10, 2),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Locations table for warehouse/storage locations
-CREATE TABLE locations (
-    id SERIAL PRIMARY KEY,
-    code VARCHAR(50) UNIQUE NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    address TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Stock levels table
 CREATE TABLE stock (
     id SERIAL PRIMARY KEY,
     product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     location_id INTEGER NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
     quantity INTEGER NOT NULL DEFAULT 0,
-    lot_number VARCHAR(100),
-    expiration_date DATE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(product_id, location_id, lot_number)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(product_id, location_id)
 );
 
--- Stock movement transaction log
 CREATE TABLE stock_movements (
     id SERIAL PRIMARY KEY,
-    product_id INTEGER NOT NULL REFERENCES products(id),
-    from_location_id INTEGER REFERENCES locations(id),
-    to_location_id INTEGER REFERENCES locations(id),
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    from_location_id INTEGER REFERENCES locations(id) ON DELETE SET NULL,
+    to_location_id INTEGER REFERENCES locations(id) ON DELETE SET NULL,
     quantity INTEGER NOT NULL,
-    transaction_type VARCHAR(50) NOT NULL, -- 'add', 'remove', 'transfer'
-    reference_id VARCHAR(100), -- External reference (e.g., order number)
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    movement_type VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
--- Indexes for performance
-CREATE INDEX idx_products_sku ON products(sku);
-CREATE INDEX idx_stock_product_location ON stock(product_id, location_id);
-CREATE INDEX idx_stock_movements_product ON stock_movements(product_id);
 ```
+**Note:** The indexes mentioned in previous versions of this spec (e.g., `idx_products_sku`) are not present in the initial migration. They may be added in future migrations if performance analysis indicates a need.
 
 ## 3. Technical Stack & Local Environment
 
@@ -172,19 +152,20 @@ PostgreSQL
 
 ### Key Go Libraries & Tools
 
-1. **Database Access**:
-   - `database/sql` package (standard library)
-   - `github.com/jackc/pgx/v5/stdlib` - PostgreSQL driver
+1.  **CLI Framework**:
+    *   `github.com/spf13/cobra` - A powerful library for creating modern command-line applications.
 
-2. **SQL Code Generation**:
-   - `sqlc` - Generate type-safe Go code from SQL queries
-   - SQL queries stored in `.sql` files
+2.  **Database Access**:
+    *   `github.com/jackc/pgx/v5` - A robust PostgreSQL driver and toolkit. The `pgxpool` is used for connection pooling.
 
-3. **Input Validation**:
-   - `github.com/go-playground/validator/v10` - For validating user input
+3.  **SQL Code Generation**:
+    *   `sqlc` - A tool for generating type-safe Go code from SQL queries. This eliminates boilerplate and reduces the risk of SQL injection.
 
-4. **Database Migrations**:
-   - `github.com/golang-migrate/migrate/v4` - For versioned database schema migrations
+4.  **Testing**:
+    *   `github.com/stretchr/testify` - A popular toolkit with helpers for writing cleaner tests (e.g., assertions, mock suites).
+    *   `github.com/ory/dockertest/v3` - A library for managing Docker containers during integration tests.
+
+**Note:** While `github.com/go-playground/validator/v10` was previously considered for input validation, it is not currently a direct dependency or actively used in the project. Validation is currently handled manually within the service layer.
 
 ### Local Development Environment
 
@@ -224,23 +205,27 @@ volumes:
 
 #### Database Migrations
 
-Migrations are managed using `golang-migrate/migrate` with versioned files:
+Database schema changes are managed using SQL migration files located in the `migrations/` directory. These files are executed automatically when the PostgreSQL container is first created using Docker Compose.
+
+The `docker-compose.yml` file mounts the `migrations/` directory to `/docker-entrypoint-initdb.d` inside the PostgreSQL container. Any `.sql` files found in this directory will be executed in alphabetical order when the container initializes its database.
+
+**Migration File Naming Convention:**
 ```
 migrations/
-  ├── 000001_create_tables.up.sql
-  ├── 000001_create_tables.down.sql
-  ├── 000002_add_indexes.up.sql
-  └── 000002_add_indexes.down.sql
+  └── 000001_create_tables.up.sql
 ```
+*   `000001`: A version number to ensure ordering.
+*   `create_tables`: A descriptive name for the migration.
+*   `up.sql`: Indicates this file applies the migration (creates tables, adds columns, etc.). Corresponding `.down.sql` files for rollbacks are planned but not yet implemented in the current workflow.
 
-Migration commands:
-```bash
-# Apply migrations
-migrate -path ./migrations -database "postgres://user:password@localhost:5432/inventory?sslmode=disable" up
+**Process for Adding a New Migration:**
+1.  Create a new `.sql` file in the `migrations/` directory following the naming convention (e.g., `000002_add_new_column.up.sql`).
+2.  Write the SQL schema changes (e.g., `ALTER TABLE ...`) in this new file.
+3.  To apply the migration to a fresh local database:
+    *   Stop and remove the existing Docker volume: `docker-compose down -v`.
+    *   Restart the database: `docker-compose up -d`. The new migration will be executed automatically.
 
-# Rollback migrations
-migrate -path ./migrations -database "postgres://user:password@localhost:5432/inventory?sslmode=disable" down
-```
+**Note:** This current setup is ideal for development and initial setup. For production environments or more complex schema versioning and rollback scenarios, a dedicated migration tool like `golang-migrate` or `Flyway` would be recommended.
 
 ### Testing Strategy
 
