@@ -30,12 +30,13 @@ integration-test:
 unit-test-coverage:
 	go tool mockery --config=.mockery.yml
 	GOEXPERIMENT=jsonv2 go test -coverprofile=coverage.out -covermode=count ./internal/... -tags=unit
-	GOEXPERIMENT=jsonv2 go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//' > coverage_percentage.txt
-	@if [ $(cat coverage_percentage.txt) -lt 90 ]; then \
-		echo "❌ Test coverage is below 90% (current: $(cat coverage_percentage.txt)%)"; \
+	GOEXPERIMENT=jsonv2 go tool cover -func=coverage.out | grep "total:" | awk '{print $$3}' | sed 's/%//' > coverage_percentage.txt
+	@coverage=$$(cat coverage_percentage.txt | cut -d. -f1); \
+	if [ $$coverage -lt 90 ]; then \
+		echo "❌ Test coverage is below 90% (current: $$(cat coverage_percentage.txt)%)"; \
 		exit 1; \
 	else \
-		echo "✅ Test coverage is $(cat coverage_percentage.txt)% (meets 90% threshold)"; \
+		echo "✅ Test coverage is $$(cat coverage_percentage.txt)% (meets 90% threshold)"; \
 	fi
 	GOEXPERIMENT=jsonv2 go tool cover -html=coverage.out -o coverage.html
 
@@ -43,12 +44,13 @@ unit-test-coverage:
 test-coverage:
 	go tool mockery --config=.mockery.yml
 	GOEXPERIMENT=jsonv2 go test -coverprofile=coverage.out -covermode=count ./internal/... -tags=unit
-	GOEXPERIMENT=jsonv2 go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//' > coverage_percentage.txt
-	@if [ $(cat coverage_percentage.txt) -lt 90 ]; then \
-		echo "❌ Test coverage is below 90% (current: $(cat coverage_percentage.txt)%)"; \
+	GOEXPERIMENT=jsonv2 go tool cover -func=coverage.out | grep "total:" | awk '{print $$3}' | sed 's/%//' > coverage_percentage.txt
+	@coverage=$$(cat coverage_percentage.txt | cut -d. -f1); \
+	if [ $$coverage -lt 90 ]; then \
+		echo "❌ Test coverage is below 90% (current: $$(cat coverage_percentage.txt)%)"; \
 		exit 1; \
 	else \
-		echo "✅ Test coverage is $(cat coverage_percentage.txt)% (meets 90% threshold)"; \
+		echo "✅ Test coverage is $$(cat coverage_percentage.txt)% (meets 90% threshold)"; \
 	fi
 	GOEXPERIMENT=jsonv2 go tool cover -html=coverage.out -o coverage.html
 
@@ -58,7 +60,27 @@ coverage:
 
 # Run integration tests with coverage and JSON v2 experiment enabled
 integration-test-coverage:
-	docker-compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from app
+	@echo "🧪 Running integration tests with coverage..."
+	@if [ -f coverage_integration.out ]; then \
+		rm coverage_integration.out; \
+	fi
+	docker-compose -f docker-compose.test.yml up -d
+	@echo "⏳ Waiting for tests to complete..."
+	@until [ "$$(docker inspect -f '{{.State.Running}}' inventory-integration-test-app 2>/dev/null)" = "false" ] 2>/dev/null; do \
+		sleep 1; \
+	done
+	@echo "📊 Extracting integration test coverage data..."
+	docker cp inventory-integration-test-app:/app/coverage_integration.out . 2>/dev/null || true
+	docker-compose -f docker-compose.test.yml down
+	@if [ -f coverage_integration.out ]; then \
+		echo "✅ Integration test coverage data extracted"; \
+		GOEXPERIMENT=jsonv2 go tool cover -func=coverage_integration.out | grep total | awk '{print $3}' | sed 's/%//' > coverage_integration_percentage.txt; \
+		echo "📈 Integration test coverage: $$(cat coverage_integration_percentage.txt)%"; \
+		GOEXPERIMENT=jsonv2 go tool cover -html=coverage_integration.out -o coverage_integration.html; \
+		echo "📄 HTML coverage report generated: coverage_integration.html"; \
+	else \
+		echo "❌ No integration test coverage data found"; \
+	fi
 
 # Run all tests (unit + integration) with comprehensive output and JSON v2 experiment enabled
 test-all:
@@ -78,6 +100,7 @@ clean:
 	rm -rf internal/db
 	rm -rf bin
 	rm -rf coverage.out coverage.html coverage_percentage.txt
+	rm -rf coverage_integration.out coverage_integration.html coverage_integration_percentage.txt
 
 # Validate OpenAPI specification
 openapi-validate:

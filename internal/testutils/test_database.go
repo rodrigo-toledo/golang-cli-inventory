@@ -31,21 +31,46 @@ func SetupTestDatabase(t *testing.T) *pgxpool.Pool {
 	// Check if we're running in a Docker environment with an existing database
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL != "" {
-		// Try to use the existing database connection
-		db, err := pgxpool.New(context.Background(), databaseURL)
-		if err != nil {
-			log.Fatalf("Could not connect to existing database: %s", err)
+		// Try to use the existing database connection with retry/backoff
+		var dbConn *pgxpool.Pool
+		var err error
+		deadline := time.Now().Add(60 * time.Second)
+		for {
+			dbConn, err = pgxpool.New(context.Background(), databaseURL)
+			if err == nil {
+				// ensure DB is reachable
+				if pingErr := dbConn.Ping(context.Background()); pingErr == nil {
+					break
+				} else {
+					err = pingErr
+					if dbConn != nil {
+						dbConn.Close()
+					}
+				}
+			}
+			if time.Now().After(deadline) {
+				log.Fatalf("Could not connect to existing database after retries: %s", err)
+			}
+			time.Sleep(1 * time.Second)
 		}
-		
-		// Run migrations
-		if err := runMigrations(db); err != nil {
-			log.Fatalf("Could not run migrations: %s", err)
+
+		// Run migrations with retry
+		migrateDeadline := time.Now().Add(60 * time.Second)
+		for {
+			if err := runMigrations(dbConn); err != nil {
+				if time.Now().After(migrateDeadline) {
+					log.Fatalf("Could not run migrations after retries: %s", err)
+				}
+				time.Sleep(1 * time.Second)
+				continue
+			}
+			break
 		}
-		
+
 		// Cleanup the database immediately after connecting
-		CleanupTestDatabase(t, db)
-		
-		return db
+		CleanupTestDatabase(t, dbConn)
+
+		return dbConn
 	}
 
 	// For Docker testing, we need to ensure each test gets a clean database
