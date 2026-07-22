@@ -88,7 +88,7 @@ func (r *StockRepository) AddStock(ctx context.Context, productID, locationID, q
 				LocationID: int32(locationID),
 				Quantity:   int32(quantity),
 			}
-			
+
 			dbStock, err = r.queries.CreateStock(ctx, createParams)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create stock: %w", err)

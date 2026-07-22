@@ -4,12 +4,9 @@ import (
 	"cli-inventory/internal/db"
 	"context"
 	"fmt"
-	"log"
 	"os"
-	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ory/dockertest/v3"
@@ -23,168 +20,103 @@ var (
 	once         sync.Once
 )
 
-// SetupTestDatabase creates a test database using Docker and returns the connection pool
-// This function uses dockertest to manage the container lifecycle
-// If DATABASE_URL is set, it will use that connection instead of creating a new container
+// SetupTestDatabase creates a test database using Docker and returns the connection pool.
+// It ensures a clean database for each test that calls it.
 func SetupTestDatabase(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 
-	// Check if we're running in a Docker environment with an existing database
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL != "" {
-		once.Do(func() {
-			// Connect to the default 'postgres' database to create the test database
-			var defaultDb *pgxpool.Pool
-			var err error
-			deadline := time.Now().Add(60 * time.Second)
-			for {
-				defaultDb, err = pgxpool.New(context.Background(), "postgres://inventory_user:inventory_password@db:5432/postgres?sslmode=disable")
-				if err == nil {
-					if pingErr := defaultDb.Ping(context.Background()); pingErr == nil {
-						break
-					} else {
-						err = pingErr
-						if defaultDb != nil {
-							defaultDb.Close()
-						}
-					}
-				}
-				if time.Now().After(deadline) {
-					log.Fatalf("Could not connect to default database after retries: %s", err)
-				}
-				time.Sleep(1 * time.Second)
-			}
-
-			// Create the test database if it doesn't exist
-			_, err = defaultDb.Exec(context.Background(), "CREATE DATABASE inventory_test_db")
-			if err != nil {
-				// Ignore "already exists" error
-				if !strings.Contains(err.Error(), "already exists") {
-					log.Fatalf("Could not create test database: %s", err)
-				}
-			}
-			defaultDb.Close()
-
-			// Now, connect to the test database
-			deadline = time.Now().Add(60 * time.Second)
-			for {
-				testDB, err = pgxpool.New(context.Background(), databaseURL)
-				if err == nil {
-					if pingErr := testDB.Ping(context.Background()); pingErr == nil {
-						break
-					} else {
-						err = pingErr
-						if testDB != nil {
-							testDB.Close()
-						}
-					}
-				}
-				if time.Now().After(deadline) {
-					log.Fatalf("Could not connect to existing database after retries: %s", err)
-				}
-				time.Sleep(1 * time.Second)
-			}
-
-			// Run migrations
-			if err := runMigrations(testDB); err != nil {
-				log.Fatalf("Could not run migrations: %s", err)
-			}
-		})
-
-		// Cleanup the database immediately after connecting
-		CleanupTestDatabase(t, testDB)
-
-		return testDB
+	// Use dockertest to create a new postgres container for each test.
+	pool, err := dockertest.NewPool("")
+	if err != nil {
+		t.Fatalf("Could not connect to Docker: %s", err)
 	}
 
-	// For Docker testing, we need to ensure each test gets a clean database
-	// We'll use a singleton pattern but ensure the database is clean
-	once.Do(func() {
-		// Create a pool of Docker clients
+	// Define the network name from docker-compose
+	networkName := "golang-cli-inventory_default"
+
+	// Check if the network exists
+	networks, err := pool.Client.ListNetworks()
+	if err != nil {
+		t.Fatalf("Could not list Docker networks: %s", err)
+	}
+
+	var network *docker.Network
+	for _, n := range networks {
+		if n.Name == networkName {
+			network = &n
+			break
+		}
+	}
+
+	if network == nil {
+		t.Fatalf("Docker network '%s' not found. Please ensure docker-compose is running.", networkName)
+	}
+
+	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: "postgres",
+		Tag:        "17",
+		Env: []string{
+			"POSTGRES_USER=testuser",
+			"POSTGRES_PASSWORD=testpass",
+			"POSTGRES_DB=testdb",
+			"listen_addresses = '*'",
+		},
+	}, func(config *docker.HostConfig) {
+		config.AutoRemove = true
+		config.RestartPolicy = docker.RestartPolicy{Name: "no"}
+	})
+	if err != nil {
+		t.Fatalf("Could not start resource: %s", err)
+	}
+
+	// Connect the container to the network
+	err = pool.Client.ConnectNetwork(network.ID, docker.NetworkConnectionOptions{
+		Container: resource.Container.ID,
+	})
+	if err != nil {
+		t.Fatalf("Could not connect container to network '%s': %s", networkName, err)
+	}
+
+	// Set a timeout for the container to be purged.
+	resource.Expire(120) // 2 minutes
+
+	// Create a database connection pool.
+	// Use the container name as the hostname, which is resolvable within the docker network.
+	var dbPool *pgxpool.Pool
+	containerName := resource.Container.Name[1:] // Remove the leading '/'
+	databaseURL := fmt.Sprintf("postgres://testuser:testpass@%s:5432/testdb?sslmode=disable", containerName)
+
+	// Wait for the database to be ready.
+	if err := pool.Retry(func() error {
 		var err error
-		testPool, err = dockertest.NewPool("")
+		dbPool, err = pgxpool.New(context.Background(), databaseURL)
 		if err != nil {
-			log.Fatalf("Could not connect to Docker: %s", err)
+			return err
 		}
+		return dbPool.Ping(context.Background())
+	}); err != nil {
+		t.Fatalf("Could not connect to database: %s", err)
+	}
 
-		// Pull the PostgreSQL image
-		err = testPool.Client.PullImage(docker.PullImageOptions{
-			Repository: "postgres",
-			Tag:        "17",
-		}, docker.AuthConfiguration{})
-		if err != nil {
-			log.Fatalf("Could not pull PostgreSQL image: %s", err)
-		}
+	// Run migrations.
+	if err := runMigrations(dbPool); err != nil {
+		t.Fatalf("Could not run migrations: %s", err)
+	}
 
-		// Create a container with PostgreSQL
-		testResource, err = testPool.RunWithOptions(&dockertest.RunOptions{
-			Repository: "postgres",
-			Tag:        "17",
-			Env: []string{
-				"POSTGRES_USER=testuser",
-				"POSTGRES_PASSWORD=testpass",
-				"POSTGRES_DB=testdb",
-				"listen_addresses = '*'",
-			},
-		}, func(config *docker.HostConfig) {
-			// Set AutoRemove to true so that stopped container goes away by itself
-			config.AutoRemove = true
-			config.RestartPolicy = docker.RestartPolicy{Name: "no"}
-		})
-		if err != nil {
-			log.Fatalf("Could not start resource: %s", err)
-		}
-
-		// Set the container to expire after 60 minutes to prevent resource leaks
-		testResource.Expire(uint(60 * time.Minute / time.Second))
-
-		// Get the database connection string
-		hostAndPort := testResource.GetHostPort("5432/tcp")
-		databaseURL = fmt.Sprintf("postgres://testuser:testpass@%s/testdb?sslmode=disable", hostAndPort)
-
-		// Exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-		if err := testPool.Retry(func() error {
-			var err error
-			testDB, err = pgxpool.New(context.Background(), databaseURL)
-			if err != nil {
-				return err
-			}
-			return testDB.Ping(context.Background())
-		}); err != nil {
-			log.Fatalf("Could not connect to database: %s", err)
-		}
-
-		// Set the DATABASE_URL environment variable for the application
-		os.Setenv("DATABASE_URL", databaseURL)
-
-		// Run migrations
-		if err := runMigrations(testDB); err != nil {
-			log.Fatalf("Could not run migrations: %s", err)
+	// Return the connection pool and a cleanup function.
+	t.Cleanup(func() {
+		if err := pool.Purge(resource); err != nil {
+			t.Errorf("Could not purge resource: %s", err)
 		}
 	})
 
-	// For integration tests with Docker, we need to cleanup the database for each test
-	if testDB != nil {
-		CleanupTestDatabase(t, testDB)
-	}
-
-	return testDB
+	return dbPool
 }
 
-// TeardownTestDatabase stops and removes the test database container
+// TeardownTestDatabase is no longer needed as t.Cleanup is used in SetupTestDatabase.
+// This function is kept for backwards compatibility but does nothing.
 func TeardownTestDatabase(t *testing.T) {
-	t.Helper()
-
-	// Only teardown if we're in standalone mode (DATABASE_URL not set)
-	if os.Getenv("DATABASE_URL") != "" {
-		return
-	}
-
-	if testResource != nil {
-		if err := testPool.Purge(testResource); err != nil {
-			t.Errorf("Could not purge resource: %s", err)
-		}
-	}
+	// This function is deprecated.
 }
 
 // CleanupTestDatabase truncates all tables between tests
@@ -220,9 +152,8 @@ func runMigrations(db *pgxpool.Pool) error {
 	// Execute the migration
 	_, err = db.Exec(context.Background(), string(migration))
 	if err != nil {
-		if !strings.Contains(err.Error(), "already exists") {
-			return fmt.Errorf("could not run migrations: %w", err)
-		}
+		// Do not ignore "already exists" errors, as this indicates a problem with test isolation.
+		return fmt.Errorf("could not run migrations: %w", err)
 	}
 
 	return nil

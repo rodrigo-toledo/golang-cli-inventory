@@ -150,7 +150,7 @@ func TestLocationRepository_Create(t *testing.T) {
 			mockDB.On("QueryRow", mock.Anything, mock.MatchedBy(func(query string) bool {
 				return strings.Contains(query, "INSERT INTO locations")
 			}), mock.AnythingOfType("[]interface {}")).Return(mockRow)
-			
+
 			// Set up mock expectations for row scanning
 			if tt.mockError != nil {
 				mockRow.On("Scan", mock.AnythingOfType("*int32"), mock.AnythingOfType("*string"), mock.AnythingOfType("*pgtype.Timestamptz")).Return(tt.mockError)
@@ -227,7 +227,7 @@ func TestLocationRepository_GetByName(t *testing.T) {
 			mockDB.On("QueryRow", mock.Anything, mock.MatchedBy(func(query string) bool {
 				return strings.Contains(query, "SELECT id, name, created_at FROM locations WHERE name = $1")
 			}), mock.AnythingOfType("[]interface {}")).Return(mockRow)
-			
+
 			// Set up mock expectations for row scanning
 			if tt.mockError != nil {
 				mockRow.On("Scan", mock.AnythingOfType("*int32"), mock.AnythingOfType("*string"), mock.AnythingOfType("*pgtype.Timestamptz")).Return(tt.mockError)
@@ -307,7 +307,7 @@ func TestLocationRepository_GetByID(t *testing.T) {
 			mockDB.On("QueryRow", mock.Anything, mock.MatchedBy(func(query string) bool {
 				return strings.Contains(query, "SELECT id, name, created_at FROM locations WHERE id = $1")
 			}), mock.AnythingOfType("[]interface {}")).Return(mockRow)
-			
+
 			// Set up mock expectations for row scanning
 			if tt.mockError != nil {
 				mockRow.On("Scan", mock.AnythingOfType("*int32"), mock.AnythingOfType("*string"), mock.AnythingOfType("*pgtype.Timestamptz")).Return(tt.mockError)
@@ -348,10 +348,10 @@ func TestLocationRepository_GetByID(t *testing.T) {
 
 func TestLocationRepository_List(t *testing.T) {
 	tests := []struct {
-		name           string
-		mockLocations  []db.Location
-		mockError      error
-		expectedError  string
+		name          string
+		mockLocations []db.Location
+		mockError     error
+		expectedError string
 	}{
 		{
 			name: "successful retrieval",
@@ -371,10 +371,10 @@ func TestLocationRepository_List(t *testing.T) {
 			expectedError: "",
 		},
 		{
-			name:           "database error",
-			mockLocations:  nil,
-			mockError:      errors.New("database error"),
-			expectedError:  "failed to list locations: database error",
+			name:          "database error",
+			mockLocations: nil,
+			mockError:     errors.New("database error"),
+			expectedError: "failed to list locations: database error",
 		},
 	}
 
@@ -389,12 +389,12 @@ func TestLocationRepository_List(t *testing.T) {
 			mockDB.On("Query", mock.Anything, mock.MatchedBy(func(query string) bool {
 				return strings.Contains(query, "SELECT id, name, created_at FROM locations")
 			}), mock.AnythingOfType("[]interface {}")).Return(mockRows, tt.mockError)
-			
+
 			if tt.mockError == nil {
 				// Set up mock expectations for rows iteration
 				mockRows.On("Next").Return(true).Times(len(tt.mockLocations))
 				mockRows.On("Next").Return(false).Once()
-				
+
 				// Set up mock expectations for row scanning
 				for _, loc := range tt.mockLocations {
 					mockRows.On("Scan", mock.AnythingOfType("*int32"), mock.AnythingOfType("*string"), mock.AnythingOfType("*pgtype.Timestamptz")).Return(nil).Run(func(args mock.Arguments) {
@@ -404,7 +404,7 @@ func TestLocationRepository_List(t *testing.T) {
 						*(args.Get(2).(*pgtype.Timestamptz)) = loc.CreatedAt
 					}).Once()
 				}
-				
+
 				// Set up mock expectations for error checking and closing
 				mockRows.On("Err").Return(nil)
 				mockRows.On("Close").Return()

@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: inventory_user
+          POSTGRES_PASSWORD: inventory_password
+          POSTGRES_DB: inventory_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.26'
+
+    - name: Install dependencies
+      run: go mod download
+
+    - name: Generate SQLC code
+      run: go tool sqlc generate
+
+    - name: Generate mocks
+      run: go tool mockery --config=.mockery.yml
+
+    - name: Run linter
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: latest
+
+    - name: Run unit tests
+      run: GOEXPERIMENT=jsonv2 go test -v -tags=unit ./internal/... -coverprofile=coverage.out -covermode=count
+
+    - name: Check coverage
+      run: |
+        coverage=$(GOEXPERIMENT=jsonv2 go tool cover -func=coverage.out | grep total: | awk '{print $3}' | sed 's/%//')
+        echo "Coverage: ${coverage}%"
+        if (( $(echo "$coverage < 90" | bc -l) )); then
+          echo "Coverage is below 90%"
+          exit 1
+        fi
+
+    - name: Build
+      run: GOEXPERIMENT=jsonv2 go build -o bin/inventory cmd/inventory/main.go
+
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.26'
+
+    - name: Install dependencies
+      run: go mod download
+
+    - name: Run integration tests
+      run: docker-compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from app

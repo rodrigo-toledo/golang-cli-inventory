@@ -15,12 +15,12 @@ build:
 # Run unit tests with JSON v2 experiment enabled
 unit-test:
 	go tool mockery --config=.mockery.yml
-	GOEXPERIMENT=jsonv2 go test ./internal/... -tags=unit
+	GOEXPERIMENT=jsonv2 go tool gotestsum --format dots -- -v ./internal/... -tags=unit
 
 # Run unit tests with JSON v2 experiment enabled
 test:
 	go tool mockery --config=.mockery.yml
-	GOEXPERIMENT=jsonv2 go test ./internal/... -tags=unit
+	GOEXPERIMENT=jsonv2 go tool gotestsum --format dots -- -v ./internal/... -tags=unit
 
 # Run integration tests with JSON v2 experiment enabled
 integration-test:
@@ -87,7 +87,7 @@ test-all:
 	@echo "🧪 Running all tests (unit + integration)..."
 	@echo "=========================================="
 	@echo "📋 Running unit tests..."
-	@GOEXPERIMENT=jsonv2 go test -v ./internal/... -tags=unit
+	@GOEXPERIMENT=jsonv2 go tool gotestsum --format dots -- -v ./internal/... -tags=unit
 	@echo "✅ Unit tests completed"
 	@echo ""
 	@echo "🔧 Running integration tests..."

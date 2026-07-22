@@ -8,8 +8,6 @@ services:
       POSTGRES_DB: inventory_test_db
     ports:
       - "5433:5432"
-    volumes:
-      - ./migrations:/docker-entrypoint-initdb.d
 
   app:
     image: golang:1.25
@@ -22,5 +20,6 @@ services:
       GOEXPERIMENT: jsonv2
     volumes:
       - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /app
-    command: ["sh", "-c", "go test -coverprofile=/app/coverage_integration.out -covermode=count ./internal/... -v -tags=integration -p 1"]
+    command: ["go", "test", "-v", "-tags=integration", "./internal/repository/..."]

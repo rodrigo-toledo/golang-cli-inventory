@@ -10,9 +10,9 @@ import (
 	"cli-inventory/internal/db"
 	"cli-inventory/internal/models"
 
-	pgtype "github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	pgtype "github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -294,7 +294,7 @@ func TestProductRepository_Create(t *testing.T) {
 			mockDB.On("QueryRow", mock.Anything, mock.MatchedBy(func(query string) bool {
 				return strings.Contains(query, "INSERT INTO products")
 			}), mock.AnythingOfType("[]interface {}")).Return(mockRow)
-			
+
 			// Set up mock expectations for row scanning
 			if tt.mockError != nil {
 				mockRow.On("Scan", mock.AnythingOfType("*int32"), mock.AnythingOfType("*string"), mock.AnythingOfType("*string"), mock.AnythingOfType("*pgtype.Text"), mock.AnythingOfType("*pgtype.Numeric"), mock.AnythingOfType("*pgtype.Timestamptz")).Return(tt.mockError)
@@ -325,7 +325,7 @@ func TestProductRepository_Create(t *testing.T) {
 				assert.Equal(t, tt.mockProduct.Sku, result.SKU)
 				assert.Equal(t, tt.mockProduct.Name, result.Name)
 				assert.Equal(t, tt.mockProduct.Description.String, result.Description)
-				
+
 				// Convert the price to float64 for comparison
 				floatPrice, _ := tt.mockProduct.Price.Float64Value()
 				assert.Equal(t, floatPrice.Float64, result.Price)
@@ -387,7 +387,7 @@ func TestProductRepository_GetBySKU(t *testing.T) {
 			mockDB.On("QueryRow", mock.Anything, mock.MatchedBy(func(query string) bool {
 				return strings.Contains(query, "SELECT id, sku, name, description, price, created_at FROM products WHERE sku = $1")
 			}), mock.AnythingOfType("[]interface {}")).Return(mockRow)
-			
+
 			// Set up mock expectations for row scanning
 			if tt.mockError != nil {
 				mockRow.On("Scan", mock.AnythingOfType("*int32"), mock.AnythingOfType("*string"), mock.AnythingOfType("*string"), mock.AnythingOfType("*pgtype.Text"), mock.AnythingOfType("*pgtype.Numeric"), mock.AnythingOfType("*pgtype.Timestamptz")).Return(tt.mockError)
@@ -421,7 +421,7 @@ func TestProductRepository_GetBySKU(t *testing.T) {
 				assert.Equal(t, tt.mockProduct.Sku, result.SKU)
 				assert.Equal(t, tt.mockProduct.Name, result.Name)
 				assert.Equal(t, tt.mockProduct.Description.String, result.Description)
-				
+
 				// Convert the price to float64 for comparison
 				floatPrice, _ := tt.mockProduct.Price.Float64Value()
 				assert.Equal(t, floatPrice.Float64, result.Price)
@@ -483,7 +483,7 @@ func TestProductRepository_GetByID(t *testing.T) {
 			mockDB.On("QueryRow", mock.Anything, mock.MatchedBy(func(query string) bool {
 				return strings.Contains(query, "SELECT id, sku, name, description, price, created_at FROM products WHERE id = $1")
 			}), mock.AnythingOfType("[]interface {}")).Return(mockRow)
-			
+
 			// Set up mock expectations for row scanning
 			if tt.mockError != nil {
 				mockRow.On("Scan", mock.AnythingOfType("*int32"), mock.AnythingOfType("*string"), mock.AnythingOfType("*string"), mock.AnythingOfType("*pgtype.Text"), mock.AnythingOfType("*pgtype.Numeric"), mock.AnythingOfType("*pgtype.Timestamptz")).Return(tt.mockError)
@@ -517,7 +517,7 @@ func TestProductRepository_GetByID(t *testing.T) {
 				assert.Equal(t, tt.mockProduct.Sku, result.SKU)
 				assert.Equal(t, tt.mockProduct.Name, result.Name)
 				assert.Equal(t, tt.mockProduct.Description.String, result.Description)
-				
+
 				// Convert the price to float64 for comparison
 				floatPrice, _ := tt.mockProduct.Price.Float64Value()
 				assert.Equal(t, floatPrice.Float64, result.Price)
@@ -540,10 +540,10 @@ func TestProductRepository_List(t *testing.T) {
 	price2.Scan(19.99)
 
 	tests := []struct {
-		name           string
-		mockProducts   []db.Product
-		mockError      error
-		expectedError  string
+		name          string
+		mockProducts  []db.Product
+		mockError     error
+		expectedError string
 	}{
 		{
 			name: "successful list",
@@ -569,10 +569,10 @@ func TestProductRepository_List(t *testing.T) {
 			expectedError: "",
 		},
 		{
-			name:           "database error",
-			mockProducts:   nil,
-			mockError:      errors.New("database error"),
-			expectedError:  "failed to list products: database error",
+			name:          "database error",
+			mockProducts:  nil,
+			mockError:     errors.New("database error"),
+			expectedError: "failed to list products: database error",
 		},
 	}
 
@@ -587,12 +587,12 @@ func TestProductRepository_List(t *testing.T) {
 			mockDB.On("Query", mock.Anything, mock.MatchedBy(func(query string) bool {
 				return strings.Contains(query, "SELECT id, sku, name, description, price, created_at FROM products")
 			}), mock.AnythingOfType("[]interface {}")).Return(mockRows, tt.mockError)
-			
+
 			if tt.mockError == nil {
 				// Set up mock expectations for rows iteration
 				mockRows.On("Next").Return(true).Times(len(tt.mockProducts))
 				mockRows.On("Next").Return(false).Once()
-				
+
 				// Set up mock expectations for row scanning
 				for _, prod := range tt.mockProducts {
 					mockRows.On("Scan", mock.AnythingOfType("*int32"), mock.AnythingOfType("*string"), mock.AnythingOfType("*string"), mock.AnythingOfType("*pgtype.Text"), mock.AnythingOfType("*pgtype.Numeric"), mock.AnythingOfType("*pgtype.Timestamptz")).Return(nil).Run(func(args mock.Arguments) {
@@ -605,7 +605,7 @@ func TestProductRepository_List(t *testing.T) {
 						*(args.Get(5).(*pgtype.Timestamptz)) = prod.CreatedAt
 					}).Once()
 				}
-				
+
 				// Set up mock expectations for error checking and closing
 				mockRows.On("Err").Return(nil)
 				mockRows.On("Close").Return()
@@ -631,7 +631,7 @@ func TestProductRepository_List(t *testing.T) {
 					assert.Equal(t, prod.Sku, result[i].SKU)
 					assert.Equal(t, prod.Name, result[i].Name)
 					assert.Equal(t, prod.Description.String, result[i].Description)
-					
+
 					// Convert the price to float64 for comparison
 					floatPrice, _ := prod.Price.Float64Value()
 					assert.Equal(t, floatPrice.Float64, result[i].Price)
