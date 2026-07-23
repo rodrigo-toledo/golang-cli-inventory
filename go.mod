@@ -13,7 +13,7 @@ require (
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/spf13/cobra v1.9.1
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	golang.org/x/oauth2 v0.30.0
 )
 
