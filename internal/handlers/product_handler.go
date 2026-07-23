@@ -5,8 +5,10 @@ package handlers
 import (
 	"encoding/json/v2"
 	"fmt"
+	"log/slog"
 	"net/http"
 
+	"cli-inventory/internal/logger"
 	"cli-inventory/internal/models"
 	"cli-inventory/internal/service"
 
@@ -52,8 +54,10 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	if err := json.MarshalWrite(w, product); err != nil {
-		// Log error, but the response header is already sent
-		// log.Printf("Failed to encode response: %v", err)
+		logger.Log.Error("Failed to encode response",
+			slog.String("error", err.Error()),
+			slog.String("handler", "CreateProduct"),
+		)
 	}
 }
 
@@ -69,8 +73,10 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	if err := json.MarshalWrite(w, products); err != nil {
-		// Log error
-		// log.Printf("Failed to encode response: %v", err)
+		logger.Log.Error("Failed to encode response",
+			slog.String("error", err.Error()),
+			slog.String("handler", "ListProducts"),
+		)
 	}
 }
 
@@ -92,7 +98,9 @@ func (h *ProductHandler) GetProductBySKU(w http.ResponseWriter, r *http.Request)
 
 	w.WriteHeader(http.StatusOK)
 	if err := json.MarshalWrite(w, product); err != nil {
-		// Log error
-		// log.Printf("Failed to encode response: %v", err)
+		logger.Log.Error("Failed to encode response",
+			slog.String("error", err.Error()),
+			slog.String("handler", "GetProductBySKU"),
+		)
 	}
 }

@@ -5,9 +5,11 @@ package handlers
 import (
 	"encoding/json/v2"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
+	"cli-inventory/internal/logger"
 	"cli-inventory/internal/service"
 )
 
@@ -71,9 +73,10 @@ func respondWithError(w http.ResponseWriter, code int, message string, details s
 
 	// Use JSON v2 MarshalWrite function
 	if err := json.MarshalWrite(w, errorResponse); err != nil {
-		// Log the error that occurred while trying to send the error response.
-		// This is a fallback, as we can't do much more if encoding fails here.
-		// In a real application, a proper logger would be used.
-		// log.Printf("Failed to encode error response: %v", err)
+		logger.Log.Error("Failed to encode error response",
+			slog.String("error", err.Error()),
+			slog.Int("status_code", code),
+			slog.String("message", message),
+		)
 	}
 }

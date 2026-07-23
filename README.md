@@ -1,5 +1,9 @@
 # CLI Inventory Management
 
+[![Go Version](https://img.shields.io/badge/Go-1.26-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen)]()
+
 This is a command-line interface (CLI) application for managing inventory. It allows users to add products, manage stock levels, move inventory between locations, and generate reports.
 
 ## Features

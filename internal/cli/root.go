@@ -115,6 +115,9 @@ var serveCmd = &cobra.Command{
 		// Setup Chi router
 		r := chi.NewRouter()
 
+		// Health check endpoint
+		r.Get("/health", handlers.HealthCheck)
+
 		// Middleware
 		r.Use(middleware.RequestID)
 		r.Use(middleware.RealIP)

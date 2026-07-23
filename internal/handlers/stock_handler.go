@@ -4,9 +4,11 @@ package handlers
 
 import (
 	"encoding/json/v2"
+	"log/slog"
 	"net/http"
 	"strconv"
 
+	"cli-inventory/internal/logger"
 	"cli-inventory/internal/models"
 	"cli-inventory/internal/service"
 )
@@ -47,8 +49,10 @@ func (h *StockHandler) AddStock(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK) // Or 201 Created if we consider this a new stock entry creation
 	if err := json.MarshalWrite(w, stock); err != nil {
-		// Log error
-		// log.Printf("Failed to encode response: %v", err)
+		logger.Log.Error("Failed to encode response",
+			slog.String("error", err.Error()),
+			slog.String("handler", "AddStock"),
+		)
 	}
 }
 
@@ -81,8 +85,10 @@ func (h *StockHandler) MoveStock(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.MarshalWrite(w, stock); err != nil {
-		// Log error
-		// log.Printf("Failed to encode response: %v", err)
+		logger.Log.Error("Failed to encode response",
+			slog.String("error", err.Error()),
+			slog.String("handler", "MoveStock"),
+		)
 	}
 }
 
@@ -108,7 +114,9 @@ func (h *StockHandler) GetLowStockReport(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.MarshalWrite(w, stocks); err != nil {
-		// Log error
-		// log.Printf("Failed to encode response: %v", err)
+		logger.Log.Error("Failed to encode response",
+			slog.String("error", err.Error()),
+			slog.String("handler", "GetLowStockReport"),
+		)
 	}
 }

@@ -1,4 +1,4 @@
-.PHONY: generate build test unit-test integration-test test-coverage integration-test-coverage test-all clean openapi-validate test-openapi docs coverage mocks
+.PHONY: generate build test unit-test integration-test test-coverage integration-test-coverage test-all clean openapi-validate test-openapi docs coverage mocks lint
 
 # Generate Go code from SQL queries
 generate:
@@ -7,6 +7,12 @@ generate:
 # Generate mocks using mockery
 mocks:
 	go tool mockery --config=.mockery.yml
+
+# Run linter
+lint:
+	@echo "🔍 Running linter..."
+	@golangci-lint run ./...
+	@echo "✅ Linting completed"
 
 # Build the application with JSON v2 experiment enabled
 build:

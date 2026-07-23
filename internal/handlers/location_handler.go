@@ -4,8 +4,10 @@ package handlers
 
 import (
 	"encoding/json/v2"
+	"log/slog"
 	"net/http"
 
+	"cli-inventory/internal/logger"
 	"cli-inventory/internal/models"
 	"cli-inventory/internal/service"
 
@@ -47,8 +49,10 @@ func (h *LocationHandler) CreateLocation(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	if err := json.MarshalWrite(w, location); err != nil {
-		// Log error
-		// log.Printf("Failed to encode response: %v", err)
+		logger.Log.Error("Failed to encode response",
+			slog.String("error", err.Error()),
+			slog.String("handler", "CreateLocation"),
+		)
 	}
 }
 
@@ -63,8 +67,10 @@ func (h *LocationHandler) ListLocations(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.MarshalWrite(w, locations); err != nil {
-		// Log error
-		// log.Printf("Failed to encode response: %v", err)
+		logger.Log.Error("Failed to encode response",
+			slog.String("error", err.Error()),
+			slog.String("handler", "ListLocations"),
+		)
 	}
 }
 
@@ -86,7 +92,9 @@ func (h *LocationHandler) GetLocationByName(w http.ResponseWriter, r *http.Reque
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.MarshalWrite(w, location); err != nil {
-		// Log error
-		// log.Printf("Failed to encode response: %v", err)
+		logger.Log.Error("Failed to encode response",
+			slog.String("error", err.Error()),
+			slog.String("handler", "GetLocationByName"),
+		)
 	}
 }
