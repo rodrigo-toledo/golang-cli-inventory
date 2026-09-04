@@ -1,6 +1,6 @@
 # CLI Inventory Management
 
-[![Go Version](https://img.shields.io/badge/Go-1.26-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.27-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen)]()
 
@@ -17,8 +17,8 @@ This is a command-line interface (CLI) application for managing inventory. It al
 
 ## Technical Stack
 
-- Language: Go 1.26 (with experimental JSON v2 package)
-- Database: PostgreSQL 17
+- Language: Go 1.27 (using the standard-library `encoding/json/v2` package)
+- Database: PostgreSQL 18
 - Docker and Docker Compose for containerization
 - SQLC for type-safe database queries
 - Cobra CLI framework for command-line interface
@@ -38,7 +38,7 @@ For efficient development, this project provides separate commands for unit and 
 
 ### Prerequisites
 
-- Go 1.26 or later (with JSON v2 experimental package)
+- Go 1.27 or later
 - Docker and Docker Compose
 - PostgreSQL client (for direct database access if needed)
 - SQLC (for code generation from SQL queries)
@@ -68,7 +68,7 @@ For efficient development, this project provides separate commands for unit and 
 
 5. Start the database using Docker Compose:
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
    The database will be automatically initialized with migrations from the `migrations/` directory.
@@ -99,7 +99,7 @@ The application can also be started as an HTTP server to expose a RESTful API.
 
 #### Starting the Server
 
-Ensure the database is running (`docker-compose up -d`). Then, start the API server:
+Ensure the database is running (`docker compose up -d`). Then, start the API server:
 
 ```bash
 ./bin/inventory serve
@@ -319,16 +319,13 @@ Available report types:
 
 ## JSON v2 Usage
 
-This project uses the experimental JSON v2 package introduced in Go 1.25+. All build and test commands require the `GOEXPERIMENT=jsonv2` flag:
+This project uses the `encoding/json/v2` package, part of the Go standard library since Go 1.27. No build flags are required — the module's `go` directive (1.27) gates access to the API:
 
 ```bash
-# Build with JSON v2
-GOEXPERIMENT=jsonv2 go build -o bin/inventory cmd/inventory/main.go
+go build -o bin/inventory cmd/inventory/main.go
+go test ./internal/...
 
-# Run tests with JSON v2
-GOEXPERIMENT=jsonv2 go test ./internal/... -tags=unit
-
-# Or use the Makefile (handles this automatically)
+# Or use the Makefile
 make build
 make test
 ```
@@ -339,7 +336,7 @@ The JSON v2 package provides:
 - Enhanced streaming capabilities
 - More efficient memory usage
 
-For more information, see the [Go JSON v2 documentation](https://go.dev/doc/go1.25#json_v2).
+For more information, see the [Go JSON v2 documentation](https://go.dev/blog/jsonv2-exp).
 
 ## Database Schema
 
@@ -392,7 +389,7 @@ The application uses the following environment variables for database configurat
 ### Docker Configuration
 
 The `docker-compose.yml` file sets up:
-- PostgreSQL 17 database
+- PostgreSQL 18 database
 - Automatic migration execution on startup
 - Data persistence via Docker volumes
 
@@ -464,7 +461,6 @@ This also runs both unit and integration tests together.
 │   │   ├── root.go               # Root command and initialization
 │   │   ├── product_commands.go   # Product-related commands
 │   │   └── stock_commands.go     # Stock-related commands
-│   ├── config/                   # Configuration management
 │   ├── database/                 # Database connection and utilities
 │   │   └── database.go
 │   ├── db/                       # Generated SQLC code
@@ -480,6 +476,7 @@ This also runs both unit and integration tests together.
 │   │   ├── location.go
 │   │   └── stock.go
 │   ├── repository/               # Data access layer
+│   │   ├── mapper.go
 │   │   ├── products.go
 │   │   ├── locations.go
 │   │   ├── stock.go

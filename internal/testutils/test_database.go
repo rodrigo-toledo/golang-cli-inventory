@@ -46,7 +46,7 @@ func SetupTestDatabase(t *testing.T) *pgxpool.Pool {
 
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "postgres",
-		Tag:        "17",
+		Tag:        "18",
 		Env: []string{
 			"POSTGRES_USER=testuser",
 			"POSTGRES_PASSWORD=testpass",
