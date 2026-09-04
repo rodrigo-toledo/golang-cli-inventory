@@ -28,8 +28,8 @@ func InitDB() error {
 	once.Do(func() {
 		databaseURL := os.Getenv("DATABASE_URL")
 		if databaseURL == "" {
-			// Fallback to default for local development
-			databaseURL = "postgres://inventory_user:inventory_password@localhost:5432/inventory_db?sslmode=disable"
+			// Fallback to default for local development (intentionally known dev credentials)
+			databaseURL = "postgres://inventory_user:inventory_password@localhost:5432/inventory_db?sslmode=disable" //nolint:gosec // development fallback
 		}
 
 		DB, err = pgxpool.New(context.Background(), databaseURL)

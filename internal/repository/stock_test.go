@@ -29,7 +29,11 @@ func (m *MockDBTXForStock) Exec(ctx context.Context, query string, args ...inter
 
 func (m *MockDBTXForStock) Query(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error) {
 	argsCalled := m.Called(ctx, query, args)
-	return argsCalled.Get(0).(pgx.Rows), argsCalled.Error(1)
+	var rows pgx.Rows
+	if argsCalled.Get(0) != nil {
+		rows = argsCalled.Get(0).(pgx.Rows)
+	}
+	return rows, argsCalled.Error(1)
 }
 
 func (m *MockDBTXForStock) QueryRow(ctx context.Context, query string, args ...interface{}) pgx.Row {
@@ -291,9 +295,10 @@ func TestStockRepository_GetByProductAndLocation(t *testing.T) {
 }
 
 const addStockQuery = `-- name: AddStock :one
-UPDATE stock 
-SET quantity = quantity + $3, updated_at = NOW() 
-WHERE product_id = $1 AND location_id = $2 
+INSERT INTO stock (product_id, location_id, quantity)
+VALUES ($1, $2, $3)
+ON CONFLICT (product_id, location_id)
+DO UPDATE SET quantity = stock.quantity + EXCLUDED.quantity, updated_at = NOW()
 RETURNING id, product_id, location_id, quantity, created_at, updated_at
 `
 
@@ -371,9 +376,9 @@ func TestStockRepository_AddStock(t *testing.T) {
 }
 
 const removeStockQuery = `-- name: RemoveStock :one
-UPDATE stock 
-SET quantity = GREATEST(quantity - $3, 0), updated_at = NOW() 
-WHERE product_id = $1 AND location_id = $2 
+UPDATE stock
+SET quantity = quantity - $3, updated_at = NOW()
+WHERE product_id = $1 AND location_id = $2 AND quantity >= $3
 RETURNING id, product_id, location_id, quantity, created_at, updated_at
 `
 
@@ -412,6 +417,15 @@ func TestStockRepository_RemoveStock(t *testing.T) {
 			mockError:     errors.New("database error"),
 			expectedError: "failed to remove stock: database error",
 		},
+		{
+			name:          "insufficient stock returns ErrNoRows",
+			productID:     1,
+			locationID:    2,
+			quantity:      10,
+			mockStock:     db.Stock{},
+			mockError:     pgx.ErrNoRows,
+			expectedError: "failed to remove stock: no rows in result set",
+		},
 	}
 
 	for _, tt := range tests {
@@ -441,6 +455,9 @@ func TestStockRepository_RemoveStock(t *testing.T) {
 			if tt.expectedError != "" {
 				assert.Error(t, err)
 				assert.EqualError(t, err, tt.expectedError)
+				if errors.Is(tt.mockError, pgx.ErrNoRows) {
+					assert.ErrorIs(t, err, pgx.ErrNoRows)
+				}
 			} else {
 				assert.NoError(t, err)
 			}

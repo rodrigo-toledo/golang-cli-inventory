@@ -5,19 +5,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
-)
-
-var (
-	testDB       *pgxpool.Pool
-	testPool     *dockertest.Pool
-	testResource *dockertest.Resource
-	once         sync.Once
 )
 
 // SetupTestDatabase creates a test database using Docker and returns the connection pool.
@@ -41,9 +33,9 @@ func SetupTestDatabase(t *testing.T) *pgxpool.Pool {
 	}
 
 	var network *docker.Network
-	for _, n := range networks {
-		if n.Name == networkName {
-			network = &n
+	for i := range networks {
+		if networks[i].Name == networkName {
+			network = &networks[i]
 			break
 		}
 	}
@@ -114,13 +106,13 @@ func SetupTestDatabase(t *testing.T) *pgxpool.Pool {
 }
 
 // TeardownTestDatabase is no longer needed as t.Cleanup is used in SetupTestDatabase.
-// This function is kept for backwards compatibility but does nothing.
-func TeardownTestDatabase(t *testing.T) {
-	// This function is deprecated.
+//
+// Deprecated: use t.Cleanup via SetupTestDatabase instead.
+func TeardownTestDatabase(_ *testing.T) {
 }
 
 // CleanupTestDatabase truncates all tables between tests
-func CleanupTestDatabase(t *testing.T, db *pgxpool.Pool) {
+func CleanupTestDatabase(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 
 	ctx := context.Background()
@@ -134,7 +126,7 @@ func CleanupTestDatabase(t *testing.T, db *pgxpool.Pool) {
 	}
 
 	for _, table := range tables {
-		_, err := db.Exec(ctx, fmt.Sprintf("TRUNCATE TABLE %s RESTART IDENTITY CASCADE", table))
+		_, err := pool.Exec(ctx, fmt.Sprintf("TRUNCATE TABLE %s RESTART IDENTITY CASCADE", table))
 		if err != nil {
 			t.Fatalf("Could not truncate table %s: %s", table, err)
 		}
@@ -142,7 +134,7 @@ func CleanupTestDatabase(t *testing.T, db *pgxpool.Pool) {
 }
 
 // runMigrations creates the database schema for testing
-func runMigrations(db *pgxpool.Pool) error {
+func runMigrations(pool *pgxpool.Pool) error {
 	// Read the migration file
 	migration, err := os.ReadFile("../../migrations/000001_create_tables.up.sql")
 	if err != nil {
@@ -150,18 +142,13 @@ func runMigrations(db *pgxpool.Pool) error {
 	}
 
 	// Execute the migration
-	_, err = db.Exec(context.Background(), string(migration))
+	_, err = pool.Exec(context.Background(), string(migration))
 	if err != nil {
 		// Do not ignore "already exists" errors, as this indicates a problem with test isolation.
 		return fmt.Errorf("could not run migrations: %w", err)
 	}
 
 	return nil
-}
-
-// GetTestDB returns the existing test database connection
-func GetTestDB() *pgxpool.Pool {
-	return testDB
 }
 
 // GetTestQueries creates and returns a new Queries instance for testing

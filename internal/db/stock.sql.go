@@ -10,9 +10,10 @@ import (
 )
 
 const addStock = `-- name: AddStock :one
-UPDATE stock 
-SET quantity = quantity + $3, updated_at = NOW() 
-WHERE product_id = $1 AND location_id = $2 
+INSERT INTO stock (product_id, location_id, quantity)
+VALUES ($1, $2, $3)
+ON CONFLICT (product_id, location_id)
+DO UPDATE SET quantity = stock.quantity + EXCLUDED.quantity, updated_at = NOW()
 RETURNING id, product_id, location_id, quantity, created_at, updated_at
 `
 
@@ -193,9 +194,9 @@ func (q *Queries) GetStockByProductAndLocation(ctx context.Context, arg GetStock
 }
 
 const removeStock = `-- name: RemoveStock :one
-UPDATE stock 
-SET quantity = GREATEST(quantity - $3, 0), updated_at = NOW() 
-WHERE product_id = $1 AND location_id = $2 
+UPDATE stock
+SET quantity = quantity - $3, updated_at = NOW()
+WHERE product_id = $1 AND location_id = $2 AND quantity >= $3
 RETURNING id, product_id, location_id, quantity, created_at, updated_at
 `
 

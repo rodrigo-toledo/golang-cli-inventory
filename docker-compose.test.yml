@@ -1,7 +1,6 @@
 services:
   db:
     image: postgres:17
-    platform: linux/arm64
     environment:
       POSTGRES_USER: inventory_user
       POSTGRES_PASSWORD: inventory_password
@@ -10,14 +9,12 @@ services:
       - "5433:5432"
 
   app:
-    image: golang:1.25
-    platform: linux/arm64
+    image: golang:1.27
     container_name: inventory-integration-test-app
     depends_on:
       - db
     environment:
       DATABASE_URL: postgres://inventory_user:inventory_password@db:5432/inventory_test_db?sslmode=disable
-      GOEXPERIMENT: jsonv2
     volumes:
       - .:/app
       - /var/run/docker.sock:/var/run/docker.sock

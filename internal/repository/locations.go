@@ -5,10 +5,13 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"cli-inventory/internal/db"
 	"cli-inventory/internal/models"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // LocationRepository provides methods for interacting with location data in the database.
@@ -41,7 +44,7 @@ func (r *LocationRepository) GetByName(ctx context.Context, name string) (*model
 	dbLocation, err := r.queries.GetLocationByName(ctx, name)
 	if err != nil {
 		// If no location is found, return nil instead of an error
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get location by name: %w", err)
@@ -58,7 +61,7 @@ func (r *LocationRepository) GetByID(ctx context.Context, id int) (*models.Locat
 	dbLocation, err := r.queries.GetLocationByID(ctx, int32(id))
 	if err != nil {
 		// If no location is found, return nil instead of an error
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get location by ID: %w", err)

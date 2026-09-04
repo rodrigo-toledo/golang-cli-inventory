@@ -3,9 +3,14 @@
 package cli
 
 import (
+	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"cli-inventory/internal/auth"
 	"cli-inventory/internal/database"
@@ -71,6 +76,14 @@ func Execute() {
 	}
 }
 
+// getEnvDefault returns the environment variable value or the provided fallback.
+func getEnvDefault(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
 // serveCmd represents the command to start the HTTP server
 var serveCmd = &cobra.Command{
 	Use:   "serve",
@@ -115,50 +128,80 @@ var serveCmd = &cobra.Command{
 		// Setup Chi router
 		r := chi.NewRouter()
 
-		// Health check endpoint
-		r.Get("/health", handlers.HealthCheck)
-
-		// Middleware
+		// Global middleware
 		r.Use(middleware.RequestID)
-		r.Use(middleware.RealIP)
 		r.Use(middleware.Logger)
 		r.Use(middleware.Recoverer)
-		r.Use(middleware.AllowContentType("application/json"))
-		r.Use(auth.Authenticator(authHandler.SessionSecret()))
-		r.Use(openapiValidator.Middleware())
 
-		// Auth Routes (no middleware)
+		// Public routes (no authentication required)
+		r.Get("/health", handlers.HealthCheck)
 		r.Get("/login", authHandler.LoginHandler)
 		r.Get("/callback", authHandler.CallbackHandler)
 		r.Get("/logout", authHandler.LogoutHandler)
 
-		// API Routes (protected by AuthMiddleware)
-		r.Route("/api/v1", func(r chi.Router) {
-			// Product routes
-			r.Route("/products", func(r chi.Router) {
-				r.Post("/", productHandler.CreateProduct)
-				r.Get("/", productHandler.ListProducts)
-				r.Get("/{sku}", productHandler.GetProductBySKU)
-			})
+		// Protected API routes
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.AllowContentType("application/json"))
+			r.Use(auth.Authenticator(authHandler.SessionSecret()))
+			r.Use(openapiValidator.Middleware())
 
-			// Location routes
-			r.Route("/locations", func(r chi.Router) {
-				r.Post("/", locationHandler.CreateLocation)
-				r.Get("/", locationHandler.ListLocations)
-				r.Get("/{name}", locationHandler.GetLocationByName)
-			})
+			r.Route("/api/v1", func(r chi.Router) {
+				// Product routes
+				r.Route("/products", func(r chi.Router) {
+					r.Post("/", productHandler.CreateProduct)
+					r.Get("/", productHandler.ListProducts)
+					r.Get("/{sku}", productHandler.GetProductBySKU)
+				})
 
-			// Stock routes
-			r.Route("/stock", func(r chi.Router) {
-				r.Post("/add", stockHandler.AddStock)
-				r.Post("/move", stockHandler.MoveStock)
-				r.Get("/low-stock", stockHandler.GetLowStockReport)
+				// Location routes
+				r.Route("/locations", func(r chi.Router) {
+					r.Post("/", locationHandler.CreateLocation)
+					r.Get("/", locationHandler.ListLocations)
+					r.Get("/{name}", locationHandler.GetLocationByName)
+				})
+
+				// Stock routes
+				r.Route("/stock", func(r chi.Router) {
+					r.Post("/add", stockHandler.AddStock)
+					r.Post("/move", stockHandler.MoveStock)
+					r.Get("/low-stock", stockHandler.GetLowStockReport)
+				})
 			})
 		})
 
-		fmt.Println("Starting server on :8080")
-		if err := http.ListenAndServe(":8080", r); err != nil {
+		addr := net.JoinHostPort(getEnvDefault("SERVER_HOST", "0.0.0.0"), getEnvDefault("SERVER_PORT", "8080"))
+		srv := &http.Server{
+			Addr:              addr,
+			Handler:           r,
+			ReadHeaderTimeout: 10 * time.Second,
+			ReadTimeout:       30 * time.Second,
+			WriteTimeout:      60 * time.Second,
+			IdleTimeout:       120 * time.Second,
+		}
+
+		// Start the server in a goroutine and shut it down gracefully on SIGINT/SIGTERM.
+		serverErr := make(chan error, 1)
+		go func() {
+			fmt.Printf("Starting server on %s\n", addr)
+			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				serverErr <- err
+			}
+		}()
+
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+
+		select {
+		case err := <-serverErr:
 			return fmt.Errorf("failed to start server: %w", err)
+		case <-ctx.Done():
+			fmt.Println("Shutting down server...")
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if err := srv.Shutdown(shutdownCtx); err != nil {
+				return fmt.Errorf("failed to shut down server: %w", err)
+			}
+			fmt.Println("Server stopped")
 		}
 		return nil
 	},

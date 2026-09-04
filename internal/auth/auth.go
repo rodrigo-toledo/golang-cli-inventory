@@ -5,6 +5,8 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -54,17 +56,15 @@ func LoadConfig() (*AuthConfig, error) {
 	}
 
 	issuers := os.Getenv("ALLOWED_ISSUERS")
+	// If no issuers are specified, we cannot validate ID tokens and token
+	// validation will be less strict. Consider making this a required field
+	// for higher security.
 	if issuers != "" {
 		cfg.AllowedIssuers = strings.Split(issuers, ",")
 		// Trim whitespace from each issuer
 		for i, issuer := range cfg.AllowedIssuers {
 			cfg.AllowedIssuers[i] = strings.TrimSpace(issuer)
 		}
-	} else {
-		// If no issuers are specified, we cannot validate tokens.
-		// Depending on strictness, this could be an error or a warning.
-		// For now, we'll allow it but token validation will be less strict.
-		// Consider making this a required field for higher security.
 	}
 
 	return cfg, nil
@@ -85,11 +85,11 @@ func (c *AuthConfig) OAuth2Config() *oauth2.Config {
 }
 
 // User represents the authenticated user's information.
+// The JSON tags map the standard OIDC ID token claims.
 type User struct {
-	ID    string
-	Email string
-	Name  string
-	// Add other fields as needed from the ID token
+	ID    string `json:"sub"`
+	Email string `json:"email"`
+	Name  string `json:"name"`
 }
 
 // contextKey is a private type for context keys to avoid collisions.
@@ -227,15 +227,15 @@ func (h *AuthHandler) CallbackHandler(w http.ResponseWriter, r *http.Request) {
 	var user *User
 	if h.verifier != nil {
 		// Parse and verify the ID Token payload.
-		idToken, err := h.verifier.Verify(ctx, rawIDToken)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to verify ID token: %v", err), http.StatusInternalServerError)
+		idToken, verifyErr := h.verifier.Verify(ctx, rawIDToken)
+		if verifyErr != nil {
+			http.Error(w, fmt.Sprintf("Failed to verify ID token: %v", verifyErr), http.StatusInternalServerError)
 			return
 		}
 
 		// Extract custom claims
-		if err := idToken.Claims(&user); err != nil {
-			http.Error(w, fmt.Sprintf("Failed to parse ID token claims: %v", err), http.StatusInternalServerError)
+		if claimsErr := idToken.Claims(&user); claimsErr != nil {
+			http.Error(w, fmt.Sprintf("Failed to parse ID token claims: %v", claimsErr), http.StatusInternalServerError)
 			return
 		}
 		// Validate issuer against the allowed list
@@ -301,15 +301,16 @@ func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-// generateRandomState generates a random string for the OAuth state parameter.
-// This is a placeholder. A real implementation should use crypto/rand.
+// generateRandomState generates a cryptographically secure random string for the
+// OAuth state parameter, used to protect against CSRF.
 func generateRandomState() string {
-	// In a real application, use crypto/rand for a secure random string.
-	// For example:
-	// b := make([]byte, 16)
-	// rand.Read(b)
-	// return base64.URLEncoding.EncodeToString(b)
-	return "random_state_string_placeholder" // Replace with secure random string
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		// crypto/rand.Read only fails if the system CSPRNG is unavailable;
+		// fall back to a time-based value rather than a predictable constant.
+		return fmt.Sprintf("state-%d", time.Now().UnixNano())
+	}
+	return base64.RawURLEncoding.EncodeToString(b)
 }
 
 // SessionSecret returns the session secret used by the AuthHandler.

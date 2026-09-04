@@ -9,7 +9,7 @@ import (
 
 // mapDBProductToModel converts a db.Product (sqlc generated) to *models.Product.
 // It safely handles nullable pgtypes coming from the database.
-func mapDBProductToModel(dbProduct db.Product) *models.Product {
+func mapDBProductToModel(dbProduct *db.Product) *models.Product {
 	// Description (pgtype.Text)
 	descriptionStr := ""
 	if dbProduct.Description.Valid {
@@ -40,8 +40,20 @@ func mapDBProductToModel(dbProduct db.Product) *models.Product {
 func mapDBProductsToModels(dbProducts []db.Product) []models.Product {
 	products := make([]models.Product, len(dbProducts))
 	for i, p := range dbProducts {
-		mp := mapDBProductToModel(p)
+		mp := mapDBProductToModel(&p)
 		products[i] = *mp
 	}
 	return products
+}
+
+// mapDBStockToModel converts a db.Stock (sqlc generated) to *models.Stock.
+func mapDBStockToModel(dbStock *db.Stock) *models.Stock {
+	return &models.Stock{
+		ID:         int(dbStock.ID),
+		ProductID:  int(dbStock.ProductID),
+		LocationID: int(dbStock.LocationID),
+		Quantity:   int(dbStock.Quantity),
+		CreatedAt:  dbStock.CreatedAt.Time,
+		UpdatedAt:  dbStock.UpdatedAt.Time,
+	}
 }

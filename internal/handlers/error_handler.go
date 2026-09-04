@@ -41,9 +41,8 @@ func HandleError(w http.ResponseWriter, err error) {
 		respondWithError(w, http.StatusBadRequest, "Invalid request", err.Error())
 	case isJSONError(err):
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload", err.Error())
-	// Example for a potential future error:
-	// case errors.Is(err, service.ErrSKUAlreadyExists):
-	// 	respondWithError(w, http.StatusConflict, "Product with this SKU already exists", err.Error())
+	case errors.Is(err, service.ErrSKUAlreadyExists):
+		respondWithError(w, http.StatusConflict, "Product with this SKU already exists", err.Error())
 	default:
 		// For any other unhandled errors, return a generic 500 Internal Server Error.
 		// This prevents leaking sensitive internal error details to the client.
@@ -57,12 +56,12 @@ func isJSONError(err error) bool {
 	var unmarshalTypeError *json.SemanticError
 	// Check if it's a syntactic error by checking the error message
 	// This is a workaround since we can't directly import jsontext.SyntacticError
-	return errors.As(err, &syntaxError) || errors.As(err, &unmarshalTypeError) || 
+	return errors.As(err, &syntaxError) || errors.As(err, &unmarshalTypeError) ||
 		(err != nil && (strings.Contains(err.Error(), "jsontext:") || strings.Contains(err.Error(), "invalid character")))
 }
 
 // respondWithError is a helper function to send a JSON error response.
-func respondWithError(w http.ResponseWriter, code int, message string, details string) {
+func respondWithError(w http.ResponseWriter, code int, message, details string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 

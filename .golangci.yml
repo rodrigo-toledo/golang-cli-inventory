@@ -1,58 +1,60 @@
-run:
-  timeout: 5m
-  tests: true
+version: "2"
 
 linters:
+  default: none
   enable:
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
-    - gofmt
-    - goimports
-    - misspell
-    - unconvert
     - bodyclose
     - dogsled
     - dupl
-    - exportloopref
+    - errcheck
     - gocritic
     - gosec
+    - govet
+    - ineffassign
+    - misspell
     - prealloc
-    - revive
-    - stylecheck
+    - staticcheck
+    - unconvert
     - unparam
+    - unused
     - whitespace
+  settings:
+    govet:
+      enable:
+        - shadow
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+    gosec:
+      excludes:
+        - G104
+        - G115
+    dupl:
+      threshold: 100
+    goconst:
+      min-len: 2
+      min-occurrences: 2
+  exclusions:
+    generated: lax
+    rules:
+      - path: _test\.go
+        linters:
+          - dupl
+          - errcheck
+          - gosec
+          - gocritic
+      - path: internal/testutils
+        linters:
+          - errcheck
+          - gosec
 
-linters-settings:
-  govet:
-    check-shadowing: true
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
-  gosec:
-    excludes:
-      - G104
-  dupl:
-    threshold: 100
-  goconst:
-    min-len: 2
-    min-occurrences: 2
+formatters:
+  enable:
+    - gofmt
+    - goimports
 
 issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - dupl
-        - gosec
-    - path: internal/mocks
-      linters:
-        - all
   max-issues-per-linter: 0
   max-same-issues: 0

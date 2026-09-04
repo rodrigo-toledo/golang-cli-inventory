@@ -4,9 +4,12 @@ import (
 	"encoding/json/v2"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 	"strings"
+
+	"cli-inventory/internal/logger"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -39,8 +42,8 @@ func NewValidator(specPath string) (*Validator, error) {
 	}
 
 	// Validate the document
-	if err := doc.Validate(loader.Context); err != nil {
-		return nil, fmt.Errorf("OpenAPI spec validation failed: %w", err)
+	if validateErr := doc.Validate(loader.Context); validateErr != nil {
+		return nil, fmt.Errorf("OpenAPI spec validation failed: %w", validateErr)
 	}
 
 	// Create router
@@ -112,7 +115,7 @@ func (v *Validator) Middleware() func(http.Handler) http.Handler {
 
 			// Validate response if status code is documented
 			if recorder.statusCode > 0 {
-				if err := v.validateResponse(r, route, recorder.statusCode, recorder.body); err != nil {
+				if err := v.validateResponse(route, recorder.statusCode, recorder.body); err != nil {
 					// Log response validation error but don't fail the request
 					// In production, you might want to log this to monitoring
 					fmt.Printf("Response validation error: %v\n", err)
@@ -123,7 +126,7 @@ func (v *Validator) Middleware() func(http.Handler) http.Handler {
 }
 
 // validateResponse validates the response against the OpenAPI specification
-func (v *Validator) validateResponse(r *http.Request, route *routers.Route, statusCode int, body []byte) error {
+func (v *Validator) validateResponse(route *routers.Route, statusCode int, body []byte) error {
 	// Find the operation
 	operation := route.Operation
 	if operation == nil {
@@ -179,7 +182,7 @@ func (v *Validator) sendErrorResponse(w http.ResponseWriter, statusCode int, mes
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	
+
 	// Use JSON v2 Marshal function
 	data, marshalErr := json.Marshal(errorResponse)
 	if marshalErr != nil {
@@ -187,8 +190,10 @@ func (v *Validator) sendErrorResponse(w http.ResponseWriter, statusCode int, mes
 		http.Error(w, "Failed to encode error response", http.StatusInternalServerError)
 		return
 	}
-	
-	w.Write(data)
+
+	if _, writeErr := w.Write(data); writeErr != nil {
+		logger.Log.Error("Failed to write error response", slog.String("error", writeErr.Error()))
+	}
 }
 
 // Enable enables OpenAPI validation

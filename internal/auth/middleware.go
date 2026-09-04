@@ -21,6 +21,9 @@ type JWTClaims struct {
 	jwt.RegisteredClaims
 }
 
+// jwtIssuer is the issuer claim used when creating and validating session JWTs.
+const jwtIssuer = "cli-inventory"
+
 // Authenticator is a middleware that checks for a valid JWT in the request.
 func Authenticator(jwtSecret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -38,7 +41,7 @@ func Authenticator(jwtSecret string) func(http.Handler) http.Handler {
 
 			// The Authorization header should be in the form "Bearer <token>"
 			parts := strings.SplitN(authHeader, " ", 2)
-			if !(len(parts) == 2 && parts[0] == "Bearer") {
+			if len(parts) != 2 || parts[0] != "Bearer" {
 				http.Error(w, "Invalid authorization header format", http.StatusUnauthorized)
 				return
 			}
@@ -52,7 +55,7 @@ func Authenticator(jwtSecret string) func(http.Handler) http.Handler {
 					return nil, errors.New("unexpected signing method")
 				}
 				return []byte(jwtSecret), nil
-			})
+			}, jwt.WithIssuer(jwtIssuer), jwt.WithLeeway(30*time.Second))
 
 			if err != nil {
 				if errors.Is(err, jwt.ErrTokenExpired) {
@@ -91,7 +94,7 @@ func CreateJWT(user *User, jwtSecret string, expirationTime time.Time) (string, 
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Issuer:    "cli-inventory", // Can be configured
+			Issuer:    jwtIssuer,
 		},
 	}
 

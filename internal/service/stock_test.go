@@ -2,10 +2,13 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
 	"cli-inventory/internal/models"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // MockStockProductRepository is a mock implementation of ProductRepositoryInterface for testing
@@ -99,22 +102,14 @@ func (m *MockStockRepositoryImpl) AddStock(ctx context.Context, productID, locat
 
 func (m *MockStockRepositoryImpl) RemoveStock(ctx context.Context, productID, locationID, quantity int) (*models.Stock, error) {
 	key := [2]int{productID, locationID}
-	if s, exists := m.stock[key]; exists {
-		s.Quantity -= quantity
-		if s.Quantity < 0 {
-			s.Quantity = 0
-		}
-		return s, nil
+	s, exists := m.stock[key]
+	if !exists || s.Quantity < quantity {
+		// Mirrors the SQL guard (AND quantity >= $3): missing or insufficient
+		// stock yields pgx.ErrNoRows.
+		return nil, pgx.ErrNoRows
 	}
 
-	// If stock doesn't exist, create it with 0 quantity
-	s := &models.Stock{
-		ID:         len(m.stock) + 1,
-		ProductID:  productID,
-		LocationID: locationID,
-		Quantity:   0,
-	}
-	m.stock[key] = s
+	s.Quantity -= quantity
 	return s, nil
 }
 
@@ -149,7 +144,7 @@ func (m *MockStockMovementRepositoryImpl) Create(ctx context.Context, movement *
 		FromLocationID: &movement.SourceLocationID,
 		ToLocationID:   &movement.DestLocationID,
 		Quantity:       movement.Quantity,
-		MovementType:   "transfer",
+		MovementType:   movement.MovementType,
 	}
 	m.movements = append(m.movements, *newMovement)
 	return newMovement, nil
@@ -230,7 +225,7 @@ func TestStockService_MoveStock(t *testing.T) {
 
 	stockRepo := &MockStockRepositoryImpl{
 		stock: map[[2]int]*models.Stock{
-			[2]int{1, 1}: {ID: 1, ProductID: 1, LocationID: 1, Quantity: 10},
+			{1, 1}: {ID: 1, ProductID: 1, LocationID: 1, Quantity: 10},
 		},
 	}
 
@@ -257,6 +252,54 @@ func TestStockService_MoveStock(t *testing.T) {
 	// Check that the stock was moved
 	if stock.Quantity != 5 {
 		t.Errorf("Expected quantity 5 at destination, got %d", stock.Quantity)
+	}
+
+	// Check that a MOVE movement was recorded
+	if len(movementRepo.movements) != 1 {
+		t.Fatalf("Expected 1 movement recorded, got %d", len(movementRepo.movements))
+	}
+	if movementRepo.movements[0].MovementType != "MOVE" {
+		t.Errorf("Expected movement type MOVE, got %q", movementRepo.movements[0].MovementType)
+	}
+}
+
+func TestStockService_MoveStock_InsufficientStockError(t *testing.T) {
+	productRepo := &MockStockProductRepository{
+		products: map[int]*models.Product{
+			1: {ID: 1, SKU: "TEST001", Name: "Test Product"},
+		},
+	}
+
+	locationRepo := &MockStockLocationRepository{
+		locations: map[int]*models.Location{
+			1: {ID: 1, Name: "Source Location"},
+			2: {ID: 2, Name: "Destination Location"},
+		},
+	}
+
+	stockRepo := &MockStockRepositoryImpl{
+		stock: map[[2]int]*models.Stock{
+			{1, 1}: {ID: 1, ProductID: 1, LocationID: 1, Quantity: 10},
+		},
+	}
+
+	movementRepo := &MockStockMovementRepositoryImpl{
+		movements: make([]models.StockMovement, 0),
+	}
+
+	service := NewStockService(productRepo, locationRepo, stockRepo, movementRepo, nil)
+
+	ctx := context.Background()
+	req := &models.MoveStockRequest{
+		ProductID:      1,
+		FromLocationID: 1,
+		ToLocationID:   2,
+		Quantity:       20, // More than available (10)
+	}
+
+	_, err := service.MoveStock(ctx, req)
+	if !errors.Is(err, ErrInsufficientStock) {
+		t.Fatalf("Expected ErrInsufficientStock, got %v", err)
 	}
 }
 
@@ -359,7 +402,7 @@ func TestStockService_MoveStock_InvalidInput(t *testing.T) {
 
 	stockRepo := &MockStockRepositoryImpl{
 		stock: map[[2]int]*models.Stock{
-			[2]int{1, 1}: {ID: 1, ProductID: 1, LocationID: 1, Quantity: 10},
+			{1, 1}: {ID: 1, ProductID: 1, LocationID: 1, Quantity: 10},
 		},
 	}
 
@@ -481,10 +524,10 @@ func TestStockService_GetLowStockReport(t *testing.T) {
 
 	stockRepo := &MockStockRepositoryImpl{
 		stock: map[[2]int]*models.Stock{
-			[2]int{1, 1}: {ID: 1, ProductID: 1, LocationID: 1, Quantity: 5},  // Low stock
-			[2]int{2, 1}: {ID: 2, ProductID: 2, LocationID: 1, Quantity: 8},  // Low stock
-			[2]int{3, 1}: {ID: 3, ProductID: 3, LocationID: 1, Quantity: 50}, // High stock
-			[2]int{1, 2}: {ID: 4, ProductID: 1, LocationID: 2, Quantity: 15}, // High stock
+			{1, 1}: {ID: 1, ProductID: 1, LocationID: 1, Quantity: 5},  // Low stock
+			{2, 1}: {ID: 2, ProductID: 2, LocationID: 1, Quantity: 8},  // Low stock
+			{3, 1}: {ID: 3, ProductID: 3, LocationID: 1, Quantity: 50}, // High stock
+			{1, 2}: {ID: 4, ProductID: 1, LocationID: 2, Quantity: 15}, // High stock
 		},
 	}
 

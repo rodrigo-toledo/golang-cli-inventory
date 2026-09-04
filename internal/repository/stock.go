@@ -5,10 +5,13 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"cli-inventory/internal/db"
 	"cli-inventory/internal/models"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // StockRepository provides methods for interacting with stock data in the database.
@@ -36,14 +39,7 @@ func (r *StockRepository) Create(ctx context.Context, stock *models.AddStockRequ
 		return nil, fmt.Errorf("failed to create stock: %w", err)
 	}
 
-	return &models.Stock{
-		ID:         int(dbStock.ID),
-		ProductID:  int(dbStock.ProductID),
-		LocationID: int(dbStock.LocationID),
-		Quantity:   int(dbStock.Quantity),
-		CreatedAt:  dbStock.CreatedAt.Time,
-		UpdatedAt:  dbStock.UpdatedAt.Time,
-	}, nil
+	return mapDBStockToModel(&dbStock), nil
 }
 
 func (r *StockRepository) GetByProductAndLocation(ctx context.Context, productID, locationID int) (*models.Stock, error) {
@@ -55,22 +51,17 @@ func (r *StockRepository) GetByProductAndLocation(ctx context.Context, productID
 	dbStock, err := r.queries.GetStockByProductAndLocation(ctx, params)
 	if err != nil {
 		// If no stock is found, return nil instead of an error
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get stock: %w", err)
 	}
 
-	return &models.Stock{
-		ID:         int(dbStock.ID),
-		ProductID:  int(dbStock.ProductID),
-		LocationID: int(dbStock.LocationID),
-		Quantity:   int(dbStock.Quantity),
-		CreatedAt:  dbStock.CreatedAt.Time,
-		UpdatedAt:  dbStock.UpdatedAt.Time,
-	}, nil
+	return mapDBStockToModel(&dbStock), nil
 }
 
+// AddStock increases the stock level for a product at a location. The underlying query
+// is an upsert, so it creates the stock row when one does not exist yet.
 func (r *StockRepository) AddStock(ctx context.Context, productID, locationID, quantity int) (*models.Stock, error) {
 	params := db.AddStockParams{
 		ProductID:  int32(productID),
@@ -80,34 +71,16 @@ func (r *StockRepository) AddStock(ctx context.Context, productID, locationID, q
 
 	dbStock, err := r.queries.AddStock(ctx, params)
 	if err != nil {
-		// If no stock is found to update, we need to create it first
-		if err.Error() == "no rows in result set" {
-			// Create a new stock entry first
-			createParams := db.CreateStockParams{
-				ProductID:  int32(productID),
-				LocationID: int32(locationID),
-				Quantity:   int32(quantity),
-			}
-
-			dbStock, err = r.queries.CreateStock(ctx, createParams)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create stock: %w", err)
-			}
-		} else {
-			return nil, fmt.Errorf("failed to add stock: %w", err)
-		}
+		return nil, fmt.Errorf("failed to add stock: %w", err)
 	}
 
-	return &models.Stock{
-		ID:         int(dbStock.ID),
-		ProductID:  int(dbStock.ProductID),
-		LocationID: int(dbStock.LocationID),
-		Quantity:   int(dbStock.Quantity),
-		CreatedAt:  dbStock.CreatedAt.Time,
-		UpdatedAt:  dbStock.UpdatedAt.Time,
-	}, nil
+	return mapDBStockToModel(&dbStock), nil
 }
 
+// RemoveStock decreases the stock level for a product at a location. The underlying
+// query only updates rows where the available quantity covers the request, so
+// pgx.ErrNoRows signals missing stock or an insufficient quantity. The error is
+// propagated so callers can map it to a domain error.
 func (r *StockRepository) RemoveStock(ctx context.Context, productID, locationID, quantity int) (*models.Stock, error) {
 	params := db.RemoveStockParams{
 		ProductID:  int32(productID),
@@ -117,21 +90,10 @@ func (r *StockRepository) RemoveStock(ctx context.Context, productID, locationID
 
 	dbStock, err := r.queries.RemoveStock(ctx, params)
 	if err != nil {
-		// If no stock is found to update, return nil
-		if err.Error() == "no rows in result set" {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("failed to remove stock: %w", err)
 	}
 
-	return &models.Stock{
-		ID:         int(dbStock.ID),
-		ProductID:  int(dbStock.ProductID),
-		LocationID: int(dbStock.LocationID),
-		Quantity:   int(dbStock.Quantity),
-		CreatedAt:  dbStock.CreatedAt.Time,
-		UpdatedAt:  dbStock.UpdatedAt.Time,
-	}, nil
+	return mapDBStockToModel(&dbStock), nil
 }
 
 func (r *StockRepository) GetLowStock(ctx context.Context, threshold int) ([]models.Stock, error) {
@@ -142,14 +104,7 @@ func (r *StockRepository) GetLowStock(ctx context.Context, threshold int) ([]mod
 
 	stocks := make([]models.Stock, len(dbStocks))
 	for i, dbStock := range dbStocks {
-		stocks[i] = models.Stock{
-			ID:         int(dbStock.ID),
-			ProductID:  int(dbStock.ProductID),
-			LocationID: int(dbStock.LocationID),
-			Quantity:   int(dbStock.Quantity),
-			CreatedAt:  dbStock.CreatedAt.Time,
-			UpdatedAt:  dbStock.UpdatedAt.Time,
-		}
+		stocks[i] = *mapDBStockToModel(&dbStock)
 	}
 
 	return stocks, nil

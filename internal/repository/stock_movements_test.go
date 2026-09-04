@@ -118,7 +118,7 @@ func TestStockMovementRepository_ListByProductID(t *testing.T) {
 		mockRows := new(MockRowsForStock)
 		mockDB.On("Query", mock.Anything, mock.Anything, mock.Anything).Return(mockRows, nil)
 
-		mockRows.On("Next").Return(true)
+		mockRows.On("Next").Return(true).Once()
 		mockRows.On("Scan", mock.AnythingOfType("*int32"), mock.AnythingOfType("*int32"), mock.AnythingOfType("*pgtype.Int4"), mock.AnythingOfType("*pgtype.Int4"), mock.AnythingOfType("*int32"), mock.AnythingOfType("*string"), mock.AnythingOfType("*pgtype.Timestamptz")).Return(nil).Run(func(args mock.Arguments) {
 			*(args.Get(0).(*int32)) = expectedMovements[0].ID
 			*(args.Get(1).(*int32)) = expectedMovements[0].ProductID
@@ -128,7 +128,7 @@ func TestStockMovementRepository_ListByProductID(t *testing.T) {
 			*(args.Get(5).(*string)) = expectedMovements[0].MovementType
 			*(args.Get(6).(*pgtype.Timestamptz)) = expectedMovements[0].CreatedAt
 		})
-		mockRows.On("Next").Return(false)
+		mockRows.On("Next").Return(false).Once()
 		mockRows.On("Close").Return()
 		mockRows.On("Err").Return(nil)
 

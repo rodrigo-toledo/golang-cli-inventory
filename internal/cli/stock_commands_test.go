@@ -154,7 +154,6 @@ func TestMoveStockCmd(t *testing.T) {
 		mockProductRepo.EXPECT().GetByID(mock.Anything, 1).Return(&models.Product{}, nil)
 		mockLocationRepo.EXPECT().GetByID(mock.Anything, 1).Return(&models.Location{}, nil)
 		mockLocationRepo.EXPECT().GetByID(mock.Anything, 2).Return(&models.Location{}, nil)
-		mockStockRepo.EXPECT().GetByProductAndLocation(mock.Anything, 1, 1).Return(&models.Stock{Quantity: 100}, nil)
 		mockStockRepo.EXPECT().RemoveStock(mock.Anything, 1, 1, 25).Return(&models.Stock{}, nil)
 		mockStockRepo.EXPECT().AddStock(mock.Anything, 1, 2, 25).Return(expectedStock, nil)
 		mockMovementRepo.EXPECT().Create(mock.Anything, mock.AnythingOfType("*models.CreateStockMovementRequest")).Return(&models.StockMovement{}, nil)

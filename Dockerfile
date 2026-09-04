@@ -1,9 +1,6 @@
-FROM --platform=linux/arm64 golang:1.26 AS builder
+FROM golang:1.27-alpine AS builder
 
 WORKDIR /app
-
-# Set the GOEXPERIMENT environment variable for JSON v2
-ENV GOEXPERIMENT=jsonv2
 
 # Copy go mod and sum files
 COPY go.mod go.sum ./

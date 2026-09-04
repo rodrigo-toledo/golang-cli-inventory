@@ -9,6 +9,7 @@ import (
 	"cli-inventory/internal/models"
 	"cli-inventory/internal/testutils"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -86,6 +87,10 @@ func TestRepository_Integration(t *testing.T) {
 		})
 
 		t.Run("List Locations", func(t *testing.T) {
+			// Start from a clean database so the exact-count assertion below
+			// does not depend on rows created by earlier subtests.
+			testutils.CleanupTestDatabase(t, db)
+
 			// Create multiple locations
 			locations := []*models.CreateLocationRequest{
 				{Name: "Warehouse A"},
@@ -201,6 +206,10 @@ func TestRepository_Integration(t *testing.T) {
 		})
 
 		t.Run("List Products", func(t *testing.T) {
+			// Start from a clean database so the exact-count assertion below
+			// does not depend on rows created by earlier subtests.
+			testutils.CleanupTestDatabase(t, db)
+
 			// Create multiple products
 			products := []*models.CreateProductRequest{
 				{
@@ -266,22 +275,29 @@ func TestRepository_Integration(t *testing.T) {
 	})
 
 	t.Run("Stock and Movements", func(t *testing.T) {
-		// Clean the database before this test group runs
-		testutils.CleanupTestDatabase(t, db)
+		// newStockFixtures resets the database and returns a fresh product and
+		// location so that every subtest is independent of execution order.
+		newStockFixtures := func(t *testing.T) (*models.Product, *models.Location) {
+			t.Helper()
+			testutils.CleanupTestDatabase(t, db)
 
-		// Pre-create shared resources for this test group
-		product, err := productRepo.Create(ctx, &models.CreateProductRequest{
-			SKU:  "STOCK-MV-PROD",
-			Name: "Stock and Movement Test Product",
-		})
-		require.NoError(t, err)
+			product, err := productRepo.Create(ctx, &models.CreateProductRequest{
+				SKU:  "STOCK-MV-PROD",
+				Name: "Stock and Movement Test Product",
+			})
+			require.NoError(t, err)
 
-		location, err := locationRepo.Create(ctx, &models.CreateLocationRequest{
-			Name: "Stock and Movement Test Location",
-		})
-		require.NoError(t, err)
+			location, err := locationRepo.Create(ctx, &models.CreateLocationRequest{
+				Name: "Stock and Movement Test Location",
+			})
+			require.NoError(t, err)
+
+			return product, location
+		}
 
 		t.Run("Add and Get Stock", func(t *testing.T) {
+			product, location := newStockFixtures(t)
+
 			// Add stock
 			quantity := 50
 			stock, err := stockRepo.AddStock(ctx, product.ID, location.ID, quantity)
@@ -297,6 +313,8 @@ func TestRepository_Integration(t *testing.T) {
 		})
 
 		t.Run("Add More Stock to Existing", func(t *testing.T) {
+			product, location := newStockFixtures(t)
+
 			stockRepo.AddStock(ctx, product.ID, location.ID, 30)
 			stock, err := stockRepo.AddStock(ctx, product.ID, location.ID, 20)
 			require.NoError(t, err)
@@ -304,6 +322,8 @@ func TestRepository_Integration(t *testing.T) {
 		})
 
 		t.Run("Remove Stock", func(t *testing.T) {
+			product, location := newStockFixtures(t)
+
 			stockRepo.AddStock(ctx, product.ID, location.ID, 100)
 			stock, err := stockRepo.RemoveStock(ctx, product.ID, location.ID, 30)
 			require.NoError(t, err)
@@ -311,13 +331,23 @@ func TestRepository_Integration(t *testing.T) {
 		})
 
 		t.Run("Remove More Stock Than Available", func(t *testing.T) {
+			product, location := newStockFixtures(t)
+
 			stockRepo.AddStock(ctx, product.ID, location.ID, 50)
-			stock, err := stockRepo.RemoveStock(ctx, product.ID, location.ID, 100)
-			require.NoError(t, err)
-			assert.Equal(t, 0, stock.Quantity)
+			_, err := stockRepo.RemoveStock(ctx, product.ID, location.ID, 100)
+			require.ErrorIs(t, err, pgx.ErrNoRows)
+
+			// Quantity must remain unchanged
+			stock, getErr := stockRepo.GetByProductAndLocation(ctx, product.ID, location.ID)
+			require.NoError(t, getErr)
+			assert.Equal(t, 50, stock.Quantity)
 		})
 
 		t.Run("Get Low Stock", func(t *testing.T) {
+			// Start from a clean database so the exact-count assertion below
+			// does not depend on rows created by earlier subtests.
+			testutils.CleanupTestDatabase(t, db)
+
 			// Setup
 			p1, _ := productRepo.Create(ctx, &models.CreateProductRequest{SKU: "LOW1"})
 			p2, _ := productRepo.Create(ctx, &models.CreateProductRequest{SKU: "LOW2"})
@@ -336,6 +366,8 @@ func TestRepository_Integration(t *testing.T) {
 		})
 
 		t.Run("Create and List Stock Movements", func(t *testing.T) {
+			product, _ := newStockFixtures(t)
+
 			source, _ := locationRepo.Create(ctx, &models.CreateLocationRequest{Name: "Source"})
 			dest, _ := locationRepo.Create(ctx, &models.CreateLocationRequest{Name: "Destination"})
 			stockRepo.AddStock(ctx, product.ID, source.ID, 100)
@@ -346,9 +378,11 @@ func TestRepository_Integration(t *testing.T) {
 				SourceLocationID: source.ID,
 				DestLocationID:   dest.ID,
 				Quantity:         25,
+				MovementType:     "MOVE",
 			})
 			require.NoError(t, err)
 			assert.NotZero(t, movement.ID)
+			assert.Equal(t, "MOVE", movement.MovementType)
 
 			movements, err := stockMovementRepo.ListByProductID(ctx, product.ID)
 			require.NoError(t, err)

@@ -8,9 +8,18 @@ import (
 	"errors"
 	"fmt"
 
+	"cli-inventory/internal/db"
 	"cli-inventory/internal/models"
+	"cli-inventory/internal/repository"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+// Movement types recorded in the stock_movements table.
+const (
+	movementTypeAdd  = "ADD"
+	movementTypeMove = "MOVE"
 )
 
 // ErrInsufficientStock is returned when an attempt is made to move more stock than is available.
@@ -23,7 +32,7 @@ type StockService struct {
 	locationRepo LocationRepositoryInterface
 	stockRepo    StockRepositoryInterface
 	movementRepo StockMovementRepositoryInterface
-	db           *pgxpool.Pool
+	pool         *pgxpool.Pool
 }
 
 // NewStockService creates a new instance of StockService with the provided repositories and database connection.
@@ -32,53 +41,76 @@ func NewStockService(
 	locationRepo LocationRepositoryInterface,
 	stockRepo StockRepositoryInterface,
 	movementRepo StockMovementRepositoryInterface,
-	db *pgxpool.Pool,
+	pool *pgxpool.Pool,
 ) *StockService {
 	return &StockService{
 		productRepo:  productRepo,
 		locationRepo: locationRepo,
 		stockRepo:    stockRepo,
 		movementRepo: movementRepo,
-		db:           db,
+		pool:         pool,
 	}
 }
 
+// AddStock increases the stock level of a product at a location and records an ADD movement.
+// When a database pool is available the stock update and the movement record are committed
+// atomically; otherwise the provided repositories are used directly (unit-test mode).
 func (s *StockService) AddStock(ctx context.Context, req *models.AddStockRequest) (*models.Stock, error) {
-	// Check if product exists
-	_, err := s.productRepo.GetByID(ctx, req.ProductID)
-	if err != nil {
+	if _, err := s.productRepo.GetByID(ctx, req.ProductID); err != nil {
 		return nil, fmt.Errorf("product with ID %d does not exist", req.ProductID)
 	}
 
-	// Check if location exists
-	_, err = s.locationRepo.GetByID(ctx, req.LocationID)
-	if err != nil {
+	if _, err := s.locationRepo.GetByID(ctx, req.LocationID); err != nil {
 		return nil, fmt.Errorf("location with ID %d does not exist", req.LocationID)
 	}
 
-	// Add stock
-	stock, err := s.stockRepo.AddStock(ctx, req.ProductID, req.LocationID, req.Quantity)
+	if s.pool == nil {
+		return s.addStockWithRepos(ctx, s.stockRepo, s.movementRepo, req)
+	}
+
+	var stock *models.Stock
+	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		q := db.New(tx)
+		var err error
+		stock, err = s.addStockWithRepos(ctx, repository.NewStockRepository(q), repository.NewStockMovementRepository(q), req)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return stock, nil
+}
+
+// addStockWithRepos performs the stock increase and records the ADD movement using the
+// given repositories. Any error aborts the surrounding transaction, if one is active.
+func (s *StockService) addStockWithRepos(
+	ctx context.Context,
+	stockRepo StockRepositoryInterface,
+	movementRepo StockMovementRepositoryInterface,
+	req *models.AddStockRequest,
+) (*models.Stock, error) {
+	stock, err := stockRepo.AddStock(ctx, req.ProductID, req.LocationID, req.Quantity)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add stock: %w", err)
 	}
 
-	// Record the movement
 	movement := &models.CreateStockMovementRequest{
 		ProductID:      req.ProductID,
 		DestLocationID: req.LocationID,
 		Quantity:       req.Quantity,
+		MovementType:   movementTypeAdd,
 	}
-	_, err = s.movementRepo.Create(ctx, movement)
-	if err != nil {
-		// Log error but don't fail the operation
-		fmt.Printf("Warning: failed to record stock movement: %v\n", err)
+	if _, err := movementRepo.Create(ctx, movement); err != nil {
+		return nil, fmt.Errorf("failed to record stock movement: %w", err)
 	}
 
 	return stock, nil
 }
 
+// MoveStock transfers stock between locations and records a MOVE movement. The stock
+// decrement, increment, and movement record are committed atomically when a database
+// pool is available.
 func (s *StockService) MoveStock(ctx context.Context, req *models.MoveStockRequest) (*models.Stock, error) {
-	// Validate input
 	if req.Quantity <= 0 {
 		return nil, fmt.Errorf("quantity must be positive")
 	}
@@ -87,100 +119,67 @@ func (s *StockService) MoveStock(ctx context.Context, req *models.MoveStockReque
 		return nil, fmt.Errorf("source and destination locations cannot be the same")
 	}
 
-	// Check if product exists
-	_, err := s.productRepo.GetByID(ctx, req.ProductID)
-	if err != nil {
+	if _, err := s.productRepo.GetByID(ctx, req.ProductID); err != nil {
 		return nil, fmt.Errorf("product with ID %d does not exist", req.ProductID)
 	}
 
-	// Check if from location exists
-	_, err = s.locationRepo.GetByID(ctx, req.FromLocationID)
-	if err != nil {
+	if _, err := s.locationRepo.GetByID(ctx, req.FromLocationID); err != nil {
 		return nil, fmt.Errorf("from location with ID %d does not exist", req.FromLocationID)
 	}
 
-	// Check if to location exists
-	_, err = s.locationRepo.GetByID(ctx, req.ToLocationID)
-	if err != nil {
+	if _, err := s.locationRepo.GetByID(ctx, req.ToLocationID); err != nil {
 		return nil, fmt.Errorf("to location with ID %d does not exist", req.ToLocationID)
 	}
 
-	// Check if there's sufficient stock at the source location
-	currentStock, err := s.stockRepo.GetByProductAndLocation(ctx, req.ProductID, req.FromLocationID)
+	if s.pool == nil {
+		return s.moveStockWithRepos(ctx, s.stockRepo, s.movementRepo, req)
+	}
+
+	var stock *models.Stock
+	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		q := db.New(tx)
+		var err error
+		stock, err = s.moveStockWithRepos(ctx, repository.NewStockRepository(q), repository.NewStockMovementRepository(q), req)
+		return err
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to check current stock: %w", err)
+		return nil, err
 	}
+	return stock, nil
+}
 
-	if currentStock.Quantity < req.Quantity {
-		return nil, fmt.Errorf("%w: only %d available, requested %d", ErrInsufficientStock, currentStock.Quantity, req.Quantity)
-	}
-
-	// If db is nil (e.g., in tests), perform operations without transaction
-	if s.db == nil {
-		// Remove stock from source location
-		_, err = s.stockRepo.RemoveStock(ctx, req.ProductID, req.FromLocationID, req.Quantity)
-		if err != nil {
-			return nil, fmt.Errorf("failed to remove stock from source location: %w", err)
+// moveStockWithRepos performs the stock transfer and records the MOVE movement using the
+// given repositories. The source decrement is guarded by the SQL predicate
+// quantity >= requested, so pgx.ErrNoRows signals insufficient stock. Any error aborts
+// the surrounding transaction, if one is active.
+func (s *StockService) moveStockWithRepos(
+	ctx context.Context,
+	stockRepo StockRepositoryInterface,
+	movementRepo StockMovementRepositoryInterface,
+	req *models.MoveStockRequest,
+) (*models.Stock, error) {
+	if _, err := stockRepo.RemoveStock(ctx, req.ProductID, req.FromLocationID, req.Quantity); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("%w: product %d has fewer than %d at location %d",
+				ErrInsufficientStock, req.ProductID, req.Quantity, req.FromLocationID)
 		}
-
-		// Add stock to destination location
-		stock, err := s.stockRepo.AddStock(ctx, req.ProductID, req.ToLocationID, req.Quantity)
-		if err != nil {
-			return nil, fmt.Errorf("failed to add stock to destination location: %w", err)
-		}
-
-		// Record the movement
-		movement := &models.CreateStockMovementRequest{
-			ProductID:        req.ProductID,
-			SourceLocationID: req.FromLocationID,
-			DestLocationID:   req.ToLocationID,
-			Quantity:         req.Quantity,
-		}
-		_, err = s.movementRepo.Create(ctx, movement)
-		if err != nil {
-			// Log error but don't fail the operation
-			fmt.Printf("Warning: failed to record stock movement: %v\n", err)
-		}
-
-		return stock, nil
-	}
-
-	// Start transaction
-	tx, err := s.db.Begin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback(ctx)
-
-	// Remove stock from source location
-	_, err = s.stockRepo.RemoveStock(ctx, req.ProductID, req.FromLocationID, req.Quantity)
-	if err != nil {
 		return nil, fmt.Errorf("failed to remove stock from source location: %w", err)
 	}
 
-	// Add stock to destination location
-	stock, err := s.stockRepo.AddStock(ctx, req.ProductID, req.ToLocationID, req.Quantity)
+	stock, err := stockRepo.AddStock(ctx, req.ProductID, req.ToLocationID, req.Quantity)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add stock to destination location: %w", err)
 	}
 
-	// Record the movement
 	movement := &models.CreateStockMovementRequest{
 		ProductID:        req.ProductID,
 		SourceLocationID: req.FromLocationID,
 		DestLocationID:   req.ToLocationID,
 		Quantity:         req.Quantity,
+		MovementType:     movementTypeMove,
 	}
-	_, err = s.movementRepo.Create(ctx, movement)
-	if err != nil {
-		// Log error but don't fail the operation
-		fmt.Printf("Warning: failed to record stock movement: %v\n", err)
-	}
-
-	// Commit transaction
-	err = tx.Commit(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	if _, err := movementRepo.Create(ctx, movement); err != nil {
+		return nil, fmt.Errorf("failed to record stock movement: %w", err)
 	}
 
 	return stock, nil

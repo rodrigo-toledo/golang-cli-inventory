@@ -14,6 +14,9 @@ import (
 // ErrProductNotFound is returned when a product cannot be found by its SKU or ID.
 var ErrProductNotFound = errors.New("product not found")
 
+// ErrSKUAlreadyExists is returned when creating a product whose SKU is already taken.
+var ErrSKUAlreadyExists = errors.New("SKU already exists")
+
 // ProductService provides methods for managing products in the inventory system.
 // It handles operations such as creating products, retrieving product information,
 // and listing all products.
@@ -32,7 +35,7 @@ func (s *ProductService) CreateProduct(ctx context.Context, req *models.CreatePr
 	// Check if product with this SKU already exists
 	existing, err := s.repo.GetBySKU(ctx, req.SKU)
 	if err == nil && existing != nil {
-		return nil, fmt.Errorf("product with SKU %s already exists", req.SKU)
+		return nil, fmt.Errorf("%w: product with SKU %s already exists", ErrSKUAlreadyExists, req.SKU)
 	}
 
 	// Create the product

@@ -5,12 +5,14 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
 	"cli-inventory/internal/db"
 	"cli-inventory/internal/models"
 
+	"github.com/jackc/pgx/v5"
 	pgtype "github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -34,9 +36,10 @@ func (r *ProductRepository) Create(ctx context.Context, product *models.CreatePr
 	// Handle price conversion
 	price := pgtype.Numeric{}
 	if product.Price >= 0 {
+		if err := price.Scan(strconv.FormatFloat(product.Price, 'f', -1, 64)); err != nil {
+			return nil, fmt.Errorf("invalid price %v: %w", product.Price, err)
+		}
 		price.Valid = true
-		// Use the same approach as in the tests
-		price.Scan(strconv.FormatFloat(product.Price, 'f', -1, 64))
 	}
 
 	params := db.CreateProductParams{
@@ -51,33 +54,33 @@ func (r *ProductRepository) Create(ctx context.Context, product *models.CreatePr
 		return nil, fmt.Errorf("failed to create product: %w", err)
 	}
 
-	return mapDBProductToModel(dbProduct), nil
+	return mapDBProductToModel(&dbProduct), nil
 }
 
 func (r *ProductRepository) GetBySKU(ctx context.Context, sku string) (*models.Product, error) {
 	dbProduct, err := r.queries.GetProductBySKU(ctx, sku)
 	if err != nil {
 		// If no product is found, return nil instead of an error
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get product by SKU: %w", err)
 	}
 
-	return mapDBProductToModel(dbProduct), nil
+	return mapDBProductToModel(&dbProduct), nil
 }
 
 func (r *ProductRepository) GetByID(ctx context.Context, id int) (*models.Product, error) {
 	dbProduct, err := r.queries.GetProductByID(ctx, int32(id))
 	if err != nil {
 		// If no product is found, return nil instead of an error
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get product by ID: %w", err)
 	}
 
-	return mapDBProductToModel(dbProduct), nil
+	return mapDBProductToModel(&dbProduct), nil
 }
 
 func (r *ProductRepository) List(ctx context.Context) ([]models.Product, error) {
